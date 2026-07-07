@@ -138,3 +138,45 @@ test('edit — time-scoped region only affects its span', () => {
 	almost(head, 1, 0.05, 'first half intact')
 	ok(tail < 0.05, 'second half suppressed')
 })
+
+import { freeze, contrast, harmonics, cqt } from './index.js'
+
+test('freeze — sustains the frozen tone for the whole duration', () => {
+	let d = sine(500, fs)
+	let out = freeze(d, { fs, at: 0.2, duration: 2 })
+	is(out.length, 2 * fs)
+	ok(out.every(isFinite))
+	let e = (x, f, from, to) => energyAt(x, f, from, to)
+	ok(e(out, 500, Math.round(1.7 * fs), 2 * fs - 2048) > 0.05 * e(d, 500, 8192, fs - 8192), 'tone persists at the tail')
+})
+
+test('contrast — tone contrasty, noise flat', () => {
+	let c1 = contrast(mags(sine(1000, N)), { fs, n: N })
+	let c2 = contrast(mags(whiteNoise(N)), { fs, n: N })
+	ok(Math.max(...c1) > Math.max(...c2) + 10, 'tone band contrast exceeds noise by >10 dB')
+})
+
+test('harmonics — saw signatures: T1 from 1/k amps, low inharmonicity; square odd-dominant', () => {
+	let h = harmonics(saw(220, 4096), { fs, f0: 220 })
+	// saw amps ∝ 1/k → e_k ∝ 1/k²: T1 = 1/Σ(1/k²) ≈ 0.645 for 10 harmonics
+	almost(h.tristimulus[0], 0.645, 0.05, 'T1 ' + h.tristimulus[0].toFixed(3))
+	ok(h.inharmonicity < 0.01, 'harmonic tone: inharmonicity ' + h.inharmonicity.toFixed(4))
+	let sq = new Float32Array(4096)
+	for (let i = 0; i < 4096; i++) { let s = 0; for (let k = 1; k <= 9; k += 2) s += Math.sin(2 * Math.PI * k * 220 * i / fs) / k; sq[i] = s }
+	let hq = harmonics(sq, { fs, f0: 220 })
+	ok(hq.oddEven > 20, 'square odd/even ' + hq.oddEven.toFixed(1))
+})
+
+test('cqt — semitone-spaced bins peak at the played notes', () => {
+	let d = new Float32Array(fs)
+	for (let i = 0; i < fs; i++) d[i] = 0.5 * Math.sin(2 * Math.PI * 220 * i / fs) + 0.5 * Math.sin(2 * Math.PI * 440 * i / fs)
+	let { freqs, mag } = cqt(d, { fs, fmin: 55, at: 0.5 })
+	let peak = f => {
+		let best = 0
+		for (let b = 1; b < mag.length; b++) if (Math.abs(freqs[b] - f) < Math.abs(freqs[best] - f)) best = b
+		return mag[best]
+	}
+	let off = peak(311) // G#4/Eb — between the tones, quiet
+	ok(peak(220) > off * 8 && peak(440) > off * 8, 'A3 + A4 bins dominate')
+	almost(freqs[12] / freqs[0], 2, 1e-6, 'octave spacing exact')
+})

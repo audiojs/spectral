@@ -42,7 +42,11 @@
     "@audio/spectral-crest": "^1.0.0",
     "@audio/spectral-mfcc": "^1.0.0",
     "@audio/spectral-ltas": "^1.0.0",
-    "@audio/spectral-edit": "^1.0.0"
+    "@audio/spectral-edit": "^1.0.0",
+    "@audio/spectral-freeze": "^1.0.0",
+    "@audio/spectral-contrast": "^1.0.0",
+    "@audio/spectral-harmonics": "^1.0.0",
+    "@audio/spectral-cqt": "^1.0.0"
   },
   "devDependencies": {
     "tst": "^9.4.0",

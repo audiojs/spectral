@@ -1,10 +1,20 @@
 {
   "name": "@audio/spectral-freeze",
-  "version": "0.0.0",
-  "description": "Spectral freeze — sustain spectral frames in time (Ableton Spectral Time class)",
+  "version": "1.0.0",
+  "description": "Spectral freeze — sustain a spectral frame with phase dispersion (Spectral Time class)",
   "type": "module",
   "sideEffects": false,
-  "private": true,
+  "main": "freeze.js",
+  "exports": {
+    ".": "./freeze.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "freeze.js"
+  ],
+  "dependencies": {
+    "fourier-transform": "^2.2.0"
+  },
   "keywords": [
     "audio",
     "dsp",
@@ -15,5 +25,8 @@
   "author": "Dmitry Iv. <dfcreative@gmail.com>",
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
