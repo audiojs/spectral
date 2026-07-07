@@ -1,0 +1,20 @@
+{
+  "name": "@audio/spectral-cqt",
+  "version": "0.0.0",
+  "description": "Constant-Q transform — log-frequency spectrum (librosa chroma_cqt substrate)",
+  "type": "module",
+  "sideEffects": false,
+  "private": true,
+  "keywords": [
+    "audio",
+    "dsp",
+    "spectral",
+    "cqt",
+    "constant-q"
+  ],
+  "license": "MIT",
+  "author": "Dmitry Iv. <dfcreative@gmail.com>",
+  "engines": {
+    "node": ">=18"
+  }
+}
