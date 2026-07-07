@@ -1,19 +1,30 @@
 {
   "name": "@audio/spectral-flatness",
-  "version": "0.0.0",
-  "description": "Spectral flatness — 0..1 tonal vs noise (geometric/arithmetic mean ratio, Peeters 2004)",
+  "version": "1.0.0",
+  "description": "Spectral flatness — geometric/arithmetic mean ratio of the POWER spectrum, 0 (tonal) … 1 (noise).",
   "type": "module",
   "sideEffects": false,
-  "private": true,
+  "main": "flatness.js",
+  "exports": {
+    ".": "./flatness.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "flatness.js"
+  ],
   "keywords": [
     "audio",
     "dsp",
     "spectral",
+    "features",
     "flatness"
   ],
   "license": "MIT",
   "author": "Dmitry Iv. <dfcreative@gmail.com>",
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

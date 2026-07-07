@@ -1,19 +1,33 @@
 {
   "name": "@audio/spectral-mfcc",
-  "version": "0.0.0",
-  "description": "MFCC — mel-frequency cepstral coefficients (librosa parity)",
+  "version": "1.0.0",
+  "description": "MFCC — mel-frequency cepstral coefficients (FFT → mel triangles → log → DCT-II)",
   "type": "module",
   "sideEffects": false,
-  "private": true,
+  "main": "mfcc.js",
+  "exports": {
+    ".": "./mfcc.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "mfcc.js"
+  ],
+  "dependencies": {
+    "fourier-transform": "^2.2.0"
+  },
   "keywords": [
     "audio",
     "dsp",
+    "spectral",
     "mfcc",
-    "features"
+    "mel"
   ],
   "license": "MIT",
   "author": "Dmitry Iv. <dfcreative@gmail.com>",
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

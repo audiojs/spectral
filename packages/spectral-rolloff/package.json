@@ -1,19 +1,30 @@
 {
   "name": "@audio/spectral-rolloff",
-  "version": "0.0.0",
-  "description": "Spectral rolloff — frequency below which N% of spectral energy lies",
+  "version": "1.0.0",
+  "description": "Spectral rolloff — frequency below which \\`p\\` of total spectral energy lies (default 85%).",
   "type": "module",
   "sideEffects": false,
-  "private": true,
+  "main": "rolloff.js",
+  "exports": {
+    ".": "./rolloff.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "rolloff.js"
+  ],
   "keywords": [
     "audio",
     "dsp",
     "spectral",
+    "features",
     "rolloff"
   ],
   "license": "MIT",
   "author": "Dmitry Iv. <dfcreative@gmail.com>",
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

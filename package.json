@@ -1,10 +1,9 @@
 {
   "name": "@audio/spectral",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "sideEffects": false,
   "description": "Spectral features — umbrella for @audio/spectral-* atoms (centroid, spread, flatness, rolloff, flux, slope, crest)",
-  "private": true,
   "workspaces": [
     "packages/*"
   ],
@@ -19,5 +18,37 @@
   "author": "Dmitry Iv. <dfcreative@gmail.com>",
   "engines": {
     "node": ">=18"
+  },
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "test": "node test.js",
+    "test:all": "npm test --workspaces --if-present && npm test",
+    "publish:all": "npm publish --workspaces && npm publish"
+  },
+  "dependencies": {
+    "@audio/spectral-centroid": "^1.0.0",
+    "@audio/spectral-spread": "^1.0.0",
+    "@audio/spectral-flatness": "^1.0.0",
+    "@audio/spectral-rolloff": "^1.0.0",
+    "@audio/spectral-flux": "^1.0.0",
+    "@audio/spectral-slope": "^1.0.0",
+    "@audio/spectral-crest": "^1.0.0",
+    "@audio/spectral-mfcc": "^1.0.0",
+    "@audio/spectral-ltas": "^1.0.0",
+    "@audio/spectral-edit": "^1.0.0"
+  },
+  "devDependencies": {
+    "tst": "^9.4.0",
+    "fourier-transform": "^2.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

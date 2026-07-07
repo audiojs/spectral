@@ -1,19 +1,30 @@
 {
   "name": "@audio/spectral-spread",
-  "version": "0.0.0",
-  "description": "Spectral spread — variance around the spectral centroid",
+  "version": "1.0.0",
+  "description": "Spectral spread — magnitude-weighted standard deviation around the centroid (Hz). Peeters 2004 §6.1.",
   "type": "module",
   "sideEffects": false,
-  "private": true,
+  "main": "spread.js",
+  "exports": {
+    ".": "./spread.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "spread.js"
+  ],
   "keywords": [
     "audio",
     "dsp",
     "spectral",
+    "features",
     "spread"
   ],
   "license": "MIT",
   "author": "Dmitry Iv. <dfcreative@gmail.com>",
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

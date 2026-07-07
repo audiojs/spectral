@@ -1,18 +1,33 @@
 {
   "name": "@audio/spectral-edit",
-  "version": "0.0.0",
-  "description": "Spectral editing — delete/attenuate/boost time×frequency regions (Audacity spectral edit; FFmpeg afftfilt class)",
+  "version": "1.0.0",
+  "description": "Spectral editing — gain on time×frequency regions via COLA-normalized STFT (Audacity/afftfilt class)",
   "type": "module",
   "sideEffects": false,
-  "private": true,
+  "main": "edit.js",
+  "exports": {
+    ".": "./edit.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "edit.js"
+  ],
+  "dependencies": {
+    "fourier-transform": "^2.2.0"
+  },
   "keywords": [
     "audio",
     "dsp",
-    "spectral-edit"
+    "spectral",
+    "spectral-edit",
+    "stft"
   ],
   "license": "MIT",
   "author": "Dmitry Iv. <dfcreative@gmail.com>",
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
