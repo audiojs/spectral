@@ -1,0 +1,19 @@
+{
+  "name": "@audio/spectral-contrast",
+  "version": "0.0.0",
+  "description": "Spectral contrast — per-band peak/valley difference (librosa / essentia)",
+  "type": "module",
+  "sideEffects": false,
+  "private": true,
+  "keywords": [
+    "audio",
+    "dsp",
+    "spectral",
+    "contrast"
+  ],
+  "license": "MIT",
+  "author": "Dmitry Iv. <dfcreative@gmail.com>",
+  "engines": {
+    "node": ">=18"
+  }
+}
