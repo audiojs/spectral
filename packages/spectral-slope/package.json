@@ -1,0 +1,19 @@
+{
+  "name": "@audio/spectral-slope",
+  "version": "0.0.0",
+  "description": "Spectral slope — linear regression over the magnitude spectrum",
+  "type": "module",
+  "sideEffects": false,
+  "private": true,
+  "keywords": [
+    "audio",
+    "dsp",
+    "spectral",
+    "slope"
+  ],
+  "license": "MIT",
+  "author": "Dmitry Iv. <dfcreative@gmail.com>",
+  "engines": {
+    "node": ">=18"
+  }
+}

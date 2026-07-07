@@ -1,0 +1,19 @@
+{
+  "name": "@audio/spectral-centroid",
+  "version": "0.0.0",
+  "description": "Spectral centroid — brightness (Hz), magnitude-weighted mean frequency",
+  "type": "module",
+  "sideEffects": false,
+  "private": true,
+  "keywords": [
+    "audio",
+    "dsp",
+    "spectral",
+    "centroid"
+  ],
+  "license": "MIT",
+  "author": "Dmitry Iv. <dfcreative@gmail.com>",
+  "engines": {
+    "node": ">=18"
+  }
+}
