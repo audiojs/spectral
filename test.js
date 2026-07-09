@@ -180,3 +180,39 @@ test('cqt — semitone-spaced bins peak at the played notes', () => {
 	ok(peak(220) > off * 8 && peak(440) > off * 8, 'A3 + A4 bins dominate')
 	almost(freqs[12] / freqs[0], 2, 1e-6, 'octave spacing exact')
 })
+
+// ── @audio/spectral-pvoc ──
+import { findPeaks, nearestPeak, lockPhase, makeFrameRatio, wrapPhase, PI2 } from '@audio/spectral-pvoc'
+
+test('spectral-pvoc — findPeaks locates isolated spectral peaks', () => {
+  let half = 512
+  let mag = new Float64Array(half + 1)
+  for (let k of [50, 100, 200]) { mag[k] = 1; mag[k - 1] = 0.5; mag[k + 1] = 0.5 }
+  let peaks = findPeaks(mag, half)
+  is(peaks.length, 3)
+  is(peaks[0], 50); is(peaks[1], 100); is(peaks[2], 200)
+  is(nearestPeak(peaks, 60), 0, 'bin 60 → peak 50')
+  is(nearestPeak(peaks, 90), 1, 'bin 90 → peak 100')
+})
+
+test('spectral-pvoc — makeFrameRatio resolves scalar and function ratios', () => {
+  let s = makeFrameRatio(1.5)
+  is(s.scalar, 1.5); is(s.at(44100, 44100), 1.5)
+  let v = makeFrameRatio(t => 1 + t)
+  is(v.scalar, 1); is(v.at(44100, 44100), 2, 'ratio(1s) = 2')
+  ok(Math.abs(wrapPhase(3 * PI2 + 0.5) - 0.5) < 1e-12, 'wrapPhase')
+})
+
+test('spectral-pvoc — lockPhase rigidly co-rotates a peak region', () => {
+  let half = 64
+  let mag = new Float64Array(half + 1)
+  let phase = new Float64Array(half + 1)
+  let prop = new Float64Array(half + 1)
+  // one strong peak at bin 32 with shoulders
+  mag[31] = 0.6; mag[32] = 1; mag[33] = 0.6
+  for (let k = 0; k <= half; k++) { phase[k] = 0.1 * k; prop[k] = phase[k] }
+  prop[32] = phase[32] + 1.0 // peak advanced by 1 rad
+  lockPhase(phase, prop, mag, half)
+  ok(Math.abs(prop[31] - (phase[31] + 1.0)) < 1e-12, 'shoulder locked to peak rotation')
+  ok(Math.abs(prop[33] - (phase[33] + 1.0)) < 1e-12, 'other shoulder locked')
+})
