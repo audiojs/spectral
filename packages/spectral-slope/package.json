@@ -1,18 +1,18 @@
 {
   "name": "@audio/spectral-slope",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Spectral slope — least-squares linear regression of magnitude over frequency. Peeters 2004 §6.6.",
   "type": "module",
   "sideEffects": false,
   "main": "slope.js",
   "exports": {
     ".": "./slope.js",
-    "./stat": "./stat.js",
+    "./audio": "./audio.js",
     "./package.json": "./package.json"
   },
   "files": [
     "slope.js",
-    "stat.js"
+    "audio.js"
   ],
   "keywords": [
     "audio",
@@ -31,5 +31,6 @@
   },
   "dependencies": {
     "fourier-transform": "^2.3.1"
-  }
+  },
+  "audio": "./audio.js"
 }
