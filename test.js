@@ -1,6 +1,7 @@
 import test, { almost, ok, is } from 'tst'
 import { fft } from 'fourier-transform'
-import { centroid, spread, flatness, rolloff, flux, slope, crest, mfcc, ltas, edit } from './index.js'
+import { centroid, spread, flatness, rolloff, flux, slope, crest, mfcc, ltas, edit, zcr } from './index.js'
+import { zcr as zcrStat } from '@audio/spectral-zcr/audio'
 
 const fs = 44100
 const N = 4096
@@ -215,4 +216,37 @@ test('spectral-pvoc — lockPhase rigidly co-rotates a peak region', () => {
   lockPhase(phase, prop, mag, half)
   ok(Math.abs(prop[31] - (phase[31] + 1.0)) < 1e-12, 'shoulder locked to peak rotation')
   ok(Math.abs(prop[33] - (phase[33] + 1.0)) < 1e-12, 'other shoulder locked')
+})
+
+// ── @audio/spectral-zcr ──
+function frameZcr (d, N = 2048, HOP = 512) {
+	let acc = 0, cnt = 0
+	for (let off = 0; off + N <= d.length; off += HOP) { acc += zcr(d.subarray(off, off + N)); cnt++ }
+	return cnt ? acc / cnt : 0
+}
+
+test('zcr — sine crossings ≈ 2f/sr and scale linearly with frequency', () => {
+	// librosa.feature.zero_crossing_rate: a sine crosses zero twice per period → rate = 2f/sr
+	almost(frameZcr(sine(440, fs)), 2 * 440 / fs, 2 * 440 / fs * 0.03, '440 Hz ≈ 0.01995')
+	almost(frameZcr(sine(4000, fs)), 2 * 4000 / fs, 2 * 4000 / fs * 0.03, '4 kHz ≈ 0.1814, scales linearly')
+})
+
+test('zcr — white noise ≈ 0.5; DC-offset constant signal → 0', () => {
+	// independent symmetric samples flip sign with p ≈ 0.5 (librosa.feature.zero_crossing_rate docs, noise example)
+	almost(frameZcr(whiteNoise(fs)), 0.5, 0.05)
+	ok(frameZcr(new Float32Array(fs).fill(0.5)) === 0, 'constant signal never crosses zero')
+})
+
+test('zcr — audio.js manifest matches the mono-kernel average on a stereo pair', () => {
+	let n = fs
+	let l = sine(440, n), r = sine(440, n).map(v => v * 0.3)
+	let mono = new Float32Array(n)
+	for (let i = 0; i < n; i++) mono[i] = (l[i] + r[i]) / 2
+	almost(zcrStat.compute([l, r], { sampleRate: fs }), frameZcr(mono), 1e-9)
+})
+
+test('zcr — np.signbit semantics (−0 counts negative) and empty-input guard', () => {
+	// librosa zero_crossings uses np.signbit: [0.1, −0, 0.2] → signs [+,−,+] → 2 changes / 3 samples
+	almost(zcr(Float32Array.from([0.1, -0, 0.2])), 2 / 3, 1e-9)
+	is(zcr(new Float32Array(0)), 0)
 })

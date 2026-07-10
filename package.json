@@ -1,9 +1,9 @@
 {
   "name": "@audio/spectral",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "sideEffects": false,
-  "description": "Spectral features — umbrella for @audio/spectral-* atoms (centroid, spread, flatness, rolloff, flux, slope, crest)",
+  "description": "Spectral features — umbrella for @audio/spectral-* atoms (centroid, spread, flatness, rolloff, flux, slope, crest, zcr)",
   "workspaces": [
     "packages/*"
   ],
@@ -34,24 +34,25 @@
   },
   "dependencies": {
     "@audio/spectral-centroid": "^1.0.0",
-    "@audio/spectral-spread": "^1.0.0",
-    "@audio/spectral-flatness": "^1.0.0",
-    "@audio/spectral-rolloff": "^1.0.0",
-    "@audio/spectral-flux": "^1.0.0",
-    "@audio/spectral-slope": "^1.0.0",
-    "@audio/spectral-crest": "^1.0.0",
-    "@audio/spectral-mfcc": "^1.0.0",
-    "@audio/spectral-ltas": "^1.0.0",
-    "@audio/spectral-edit": "^1.0.0",
-    "@audio/spectral-freeze": "^1.0.0",
     "@audio/spectral-contrast": "^1.0.0",
-    "@audio/spectral-harmonics": "^1.0.0",
     "@audio/spectral-cqt": "^1.0.0",
-    "@audio/spectral-pvoc": "^1.0.0"
+    "@audio/spectral-crest": "^1.0.0",
+    "@audio/spectral-edit": "^1.0.0",
+    "@audio/spectral-flatness": "^1.0.0",
+    "@audio/spectral-flux": "^1.0.0",
+    "@audio/spectral-freeze": "^1.0.0",
+    "@audio/spectral-harmonics": "^1.0.0",
+    "@audio/spectral-ltas": "^1.0.0",
+    "@audio/spectral-mfcc": "^1.0.0",
+    "@audio/spectral-pvoc": "^1.0.0",
+    "@audio/spectral-rolloff": "^1.0.0",
+    "@audio/spectral-slope": "^1.0.0",
+    "@audio/spectral-spread": "^1.0.0",
+    "@audio/spectral-zcr": "^1.0.0"
   },
   "devDependencies": {
-    "tst": "^9.4.0",
-    "fourier-transform": "^2.2.0"
+    "fourier-transform": "^2.2.0",
+    "tst": "^9.4.0"
   },
   "publishConfig": {
     "access": "public"

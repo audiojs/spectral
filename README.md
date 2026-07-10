@@ -1,6 +1,6 @@
 # @audio/spectral
 
-> Spectral features — centroid, spread, flatness, rolloff, flux, slope, crest. All planned.
+> Spectral features — centroid, spread, flatness, rolloff, flux, slope, crest, zcr. All planned.
 
 Also planned: `spectral-mfcc` (librosa parity), `spectral-ltas` (adaptive/match-EQ substrate), `spectral-edit` (time×frequency region editing — Audacity/afftfilt class).
 

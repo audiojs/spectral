@@ -1,0 +1,43 @@
+{
+  "name": "@audio/spectral-zcr",
+  "version": "1.0.0",
+  "description": "Zero-crossing rate — per-frame sign-change fraction (librosa zero_crossing_rate class)",
+  "type": "module",
+  "sideEffects": false,
+  "main": "zcr.js",
+  "exports": {
+    ".": "./zcr.js",
+    "./audio": "./audio.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "zcr.js",
+    "audio.js"
+  ],
+  "keywords": [
+    "audio",
+    "dsp",
+    "spectral",
+    "features",
+    "zcr",
+    "zero-crossing-rate"
+  ],
+  "license": "MIT",
+  "author": "Dmitry Iv. <dfcreative@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/audiojs/spectral.git",
+    "directory": "packages/spectral-zcr"
+  },
+  "homepage": "https://github.com/audiojs/spectral/tree/main/packages/spectral-zcr",
+  "bugs": {
+    "url": "https://github.com/audiojs/spectral/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "audio": "./audio.js"
+}

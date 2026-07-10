@@ -14,5 +14,6 @@ export { default as freeze } from '@audio/spectral-freeze'
 export { default as contrast } from '@audio/spectral-contrast'
 export { default as harmonics } from '@audio/spectral-harmonics'
 export { default as cqt } from '@audio/spectral-cqt'
+export { default as zcr } from '@audio/spectral-zcr'
 
 export { scatterGated, scatterLocked, lockPhase, findPeaks, nearestPeak, makeFrameRatio, wrapPhase, WIN_GAIN } from '@audio/spectral-pvoc'
