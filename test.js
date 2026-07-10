@@ -1,6 +1,6 @@
 import test, { almost, ok, is } from 'tst'
 import { fft } from 'fourier-transform'
-import { centroid, spread, flatness, rolloff, flux, slope, crest, mfcc, ltas, edit, zcr } from './index.js'
+import { centroid, spread, flatness, rolloff, flux, slope, crest, mfcc, ltas, edit, zcr, target, deviation, smooth } from './index.js'
 import { zcr as zcrStat } from '@audio/spectral-zcr/audio'
 
 const fs = 44100
@@ -34,6 +34,40 @@ function mags (data) {
 	let m = new Float32Array(half + 1)
 	for (let k = 0; k <= half; k++) m[k] = Math.sqrt(re[k] * re[k] + im[k] * im[k])
 	return m
+}
+// mulberry32 (public domain) — seeded PRNG for pinkNoise below. The file's own `whiteNoise`
+// LCG is fine for the loose ≈0.5/flatness checks it's used for elsewhere, but LCGs have a known
+// lattice/spectral-test weakness (Knuth, TAOCP Vol.2 §3.3.4) that shows up as multi-dB narrowband
+// coloration once filtered — too coarse for the ±1.5 dB LTAS-vs-target check below.
+function mulberry32 (seed) {
+	let s = seed >>> 0
+	return function () {
+		s = (s + 0x6d2b79f5) | 0
+		let t = Math.imul(s ^ (s >>> 15), 1 | s)
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+	}
+}
+// Paul Kellet's refined pink noise filter (musicdsp.org "pink noise", public domain), −3 dB/oct
+// to within ~±0.05 dB over ~9.5 octaves — colors seeded white noise for the spectral-target ×
+// spectral-ltas integration test below.
+function pinkNoise (n, seed = 11) {
+	let rnd = mulberry32(seed)
+	let d = new Float32Array(n)
+	let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0
+	for (let i = 0; i < n; i++) {
+		let x = rnd() * 2 - 1
+		b0 = 0.99886 * b0 + x * 0.0555179
+		b1 = 0.99332 * b1 + x * 0.0750759
+		b2 = 0.96900 * b2 + x * 0.1538520
+		b3 = 0.86650 * b3 + x * 0.3104856
+		b4 = 0.55000 * b4 + x * 0.5329522
+		b5 = -0.7616 * b5 - x * 0.0168980
+		let out = b0 + b1 + b2 + b3 + b4 + b5 + b6 + x * 0.5362
+		b6 = x * 0.115926
+		d[i] = out * 0.11
+	}
+	return d
 }
 // single-bin energy (Goertzel)
 function energyAt (data, freq, from = 0, to = data.length, sr = fs) {
@@ -249,4 +283,102 @@ test('zcr — np.signbit semantics (−0 counts negative) and empty-input guard'
 	// librosa zero_crossings uses np.signbit: [0.1, −0, 0.2] → signs [+,−,+] → 2 changes / 3 samples
 	almost(zcr(Float32Array.from([0.1, -0, 0.2])), 2 / 3, 1e-9)
 	is(zcr(new Float32Array(0)), 0)
+})
+
+// ── @audio/spectral-target ──
+
+test('target — speech anchors render exactly (Byrne, Dillon, Tran et al. 1994, JASA 96(4):2108, Table II "Combined" col, p.2116, normalized to 70 dB SPL overall: 500→62.1, 1000→53.7, 2000→48.7, 4000→45.6 dB)', () => {
+	let fs = 44100, bins = 442 // n=882 → 50 Hz/bin, so 500/1000/2000/4000 Hz land on exact bins
+	let curve = target('speech', { fs, bins })
+	let n = 2 * (bins - 1)
+	let bin = f => Math.round(f * n / fs)
+	let hz = [500, 1000, 2000, 4000]
+	let published = [62.1, 53.7, 48.7, 45.6]
+	let rendered = hz.map(f => curve[bin(f)])
+	let rMean = rendered.reduce((a, b) => a + b, 0) / rendered.length
+	let pMean = published.reduce((a, b) => a + b, 0) / published.length
+	for (let i = 0; i < hz.length; i++)
+		almost(rendered[i] - rMean, published[i] - pMean, 0.05, `${hz[i]} Hz anchor exact (mean-normalization-invariant check)`)
+})
+
+test('target — pink is exactly −3.0103 dB/octave (analytic, equal energy per octave)', () => {
+	let fs = 44100, bins = 2049
+	let curve = target('pink', { fs, bins })
+	for (let k of [25, 100, 400]) // doubling the bin index doubles the frequency exactly
+		almost(curve[2 * k] - curve[k], -3.0103, 0.01, `bin ${k}→${2 * k}`)
+})
+
+test('target — custom anchor table renders an exact straight log-frequency line', () => {
+	let fs = 44100, bins = 883 // n=1764 → 25 Hz/bin, so 100/200/400/800/1600 Hz land on exact bins
+	let curve = target([[100, 0], [1600, -40]], { fs, bins }) // 4 octaves, −10 dB/octave
+	let n = 2 * (bins - 1)
+	let bin = f => Math.round(f * n / fs)
+	let v100 = curve[bin(100)]
+	almost(curve[bin(200)] - v100, -10, 1e-4, '1 octave in')
+	almost(curve[bin(400)] - v100, -20, 1e-4, '2 octaves in')
+	almost(curve[bin(800)] - v100, -30, 1e-4, '3 octaves in')
+	almost(curve[bin(1600)] - v100, -40, 1e-4, '4 octaves in — the far anchor')
+})
+
+test('deviation — target against itself is ~0 inside the band, exactly 0 at/outside the band edges', () => {
+	let fs = 44100, bins = 2049
+	let n = 2 * (bins - 1)
+	let td = target('speech', { fs, bins })
+	let measured = Float32Array.from(td, db => 10 ** (db / 20)) // dB → linear mag
+	let dev = deviation(measured, td, { fs })
+	let maxAbs = 0
+	for (let k = 0; k < bins; k++) {
+		let f = k * fs / n
+		if (f > 50 && f < 19845) maxAbs = Math.max(maxAbs, Math.abs(dev[k]))
+	}
+	ok(maxAbs <= 0.05, `identity deviation ${maxAbs.toFixed(4)} dB inside the band`)
+	is(dev[0], 0, 'DC — outside [20 Hz, 0.45·fs], exactly 0')
+	is(dev[bins - 1], 0, 'Nyquist — outside [20 Hz, 0.45·fs], exactly 0')
+})
+
+test('deviation — flat ("white noise") measured vs pink target slopes correction downward with frequency', () => {
+	let fs = 44100, bins = 2049
+	let n = 2 * (bins - 1)
+	let flat = new Float32Array(bins).fill(1) // flat linear magnitude = flat LTAS
+	let td = target('pink', { fs, bins })
+	let dev = deviation(flat, td, { fs })
+	let bin = f => Math.round(f * n / fs)
+	let c500 = dev[bin(500)], c8k = dev[bin(8000)]
+	ok(c8k - c500 <= -6, `correction(8kHz)−correction(500Hz) = ${(c8k - c500).toFixed(2)} dB (expect ≤ −6, HF cut)`)
+})
+
+test('deviation — clamp bounds the correction everywhere, even under extreme mismatch', () => {
+	let fs = 44100, bins = 2049
+	let flat = new Float32Array(bins).fill(1)
+	let td = target('speech', { fs, bins }) // steep HF falloff vs a flat "measured" → large mismatch
+	let clamp = 8
+	let dev = deviation(flat, td, { fs, clamp })
+	let maxAbs = 0
+	for (let k = 0; k < bins; k++) maxAbs = Math.max(maxAbs, Math.abs(dev[k]))
+	ok(maxAbs <= clamp + 1e-6, `|correction| ≤ ${clamp} dB everywhere (max ${maxAbs.toFixed(2)})`)
+})
+
+test('smooth — a single-bin spike is reduced ≥6 dB by 1/3-oct smoothing, total mean preserved', () => {
+	let fs = 44100, bins = 2049
+	let db = new Float32Array(bins)
+	db[500] = 12
+	let sm = smooth(db, { fs, oct: 1 / 3 })
+	ok(sm[500] <= 6, `spike 12 → ${sm[500].toFixed(2)} dB`)
+	let meanBefore = db.reduce((a, b) => a + b, 0) / bins
+	let meanAfter = sm.reduce((a, b) => a + b, 0) / bins
+	almost(meanAfter, meanBefore, 0.1, `mean preserved: ${meanBefore.toFixed(5)} → ${meanAfter.toFixed(5)}`)
+})
+
+test('spectral-target × spectral-ltas — pink noise LTAS deviates ~0 dB from the pink target, 100 Hz–10 kHz', () => {
+	let sig = pinkNoise(20 * fs, 11) // seeded, 20 s
+	let m = ltas(sig, { frameSize: 4096, hop: 2048 })
+	let td = target('pink', { fs, bins: m.length })
+	let dev = deviation(m, td, { fs })
+	let n = 2 * (m.length - 1)
+	let maxAbs = 0
+	for (let k = 0; k < m.length; k++) {
+		let f = k * fs / n
+		if (f >= 100 && f <= 10000) maxAbs = Math.max(maxAbs, Math.abs(dev[k]))
+	}
+	ok(maxAbs <= 1.5, `pink-noise LTAS vs pink target within ${maxAbs.toFixed(2)} dB, 100 Hz–10 kHz`)
 })

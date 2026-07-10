@@ -1,0 +1,33 @@
+{
+  "name": "@audio/spectral-target",
+  "version": "1.0.0",
+  "description": "Target-curve library — per-content-type LTAS targets (speech/music/pink/voice-music) + deviation math for adaptive/match EQ",
+  "type": "module",
+  "sideEffects": false,
+  "main": "target.js",
+  "exports": {
+    ".": "./target.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "target.js"
+  ],
+  "keywords": [
+    "audio",
+    "dsp",
+    "spectral",
+    "ltas",
+    "eq",
+    "target-curve",
+    "match-eq",
+    "adaptive-eq"
+  ],
+  "license": "MIT",
+  "author": "Dmitry Iv. <dfcreative@gmail.com>",
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

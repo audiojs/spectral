@@ -48,6 +48,7 @@
     "@audio/spectral-rolloff": "^1.0.0",
     "@audio/spectral-slope": "^1.0.0",
     "@audio/spectral-spread": "^1.0.0",
+    "@audio/spectral-target": "^1.0.0",
     "@audio/spectral-zcr": "^1.0.0"
   },
   "devDependencies": {
