@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-edit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Spectral editing — gain on time×frequency regions via COLA-normalized STFT (Audacity/afftfilt class)",
   "type": "module",
   "sideEffects": false,

@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-crest",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Spectral crest — peak-to-mean ratio of the POWER spectrum (≥1; high = peaky/tonal).",
   "type": "module",
   "sideEffects": false,

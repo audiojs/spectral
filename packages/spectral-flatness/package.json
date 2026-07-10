@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-flatness",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Spectral flatness — geometric/arithmetic mean ratio of the POWER spectrum, 0 (tonal) … 1 (noise).",
   "type": "module",
   "sideEffects": false,

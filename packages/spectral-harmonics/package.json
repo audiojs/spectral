@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-harmonics",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Harmonic descriptors — inharmonicity, tristimulus, odd/even ratio from f0 (essentia parity)",
   "type": "module",
   "sideEffects": false,
