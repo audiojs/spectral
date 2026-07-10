@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-spread",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Spectral spread — magnitude-weighted standard deviation around the centroid (Hz). Peeters 2004 §6.1.",
   "type": "module",
   "sideEffects": false,

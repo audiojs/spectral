@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-ltas",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "LTAS — long-term average spectrum via Welch's method (adaptive-EQ / match-EQ substrate)",
   "type": "module",
   "sideEffects": false,

@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-contrast",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Spectral contrast — per-octave peak/valley difference (Jiang 2002, librosa parity)",
   "type": "module",
   "sideEffects": false,

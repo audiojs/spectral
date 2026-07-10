@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-rolloff",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Spectral rolloff — frequency below which \\`p\\` of total spectral energy lies (default 85%).",
   "type": "module",
   "sideEffects": false,

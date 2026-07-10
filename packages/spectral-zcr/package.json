@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-zcr",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Zero-crossing rate — per-frame sign-change fraction (librosa zero_crossing_rate class)",
   "type": "module",
   "sideEffects": false,
