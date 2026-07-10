@@ -1,10 +1,10 @@
 # @audio/spectral
 
-> Spectral features — centroid, spread, flatness, rolloff, flux, slope, crest, zcr. All planned.
+> Spectral features — centroid, spread, flatness, rolloff, flux, slope, crest, zcr. Shipped.
 
-Also planned: `spectral-mfcc` (librosa parity), `spectral-ltas` (adaptive/match-EQ substrate), `spectral-edit` (time×frequency region editing — Audacity/afftfilt class).
+Also shipped: `spectral-mfcc` (librosa parity), `spectral-ltas` (adaptive/match-EQ substrate), `spectral-edit` (time×frequency region editing — Audacity/afftfilt class), `spectral-harmonics` (inharmonicity/tristimulus/odd-even from f0).
 
-Reference implementations exist in the `audio` package stats (`centroid`, `flatness`, `crest` shipped there — extract, don't rewrite). Parity: FFmpeg `aspectralstats`, MIREX spectral features. LTAS / spectral-stats for the Auto-Chain analyser build on these atoms.
+Parity: FFmpeg `aspectralstats`, MIREX spectral features. LTAS / `spectral-target` power the Auto-Chain analyser's adaptive EQ.
 
 ## `spectral-target`
 

@@ -19,13 +19,11 @@ export const spread = {
 		for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1))
 		const frame = new Float64Array(N)
 		let acc = 0, cnt = 0
-		let prev = null
 		for (let off = 0; off + N <= n; off += HOP) {
 			for (let i = 0; i < N; i++) frame[i] = mono[off + i] * win[i]
 			const mag = rfft(frame)
 			const v = kernelFn(mag, { fs: sampleRate, n: N, ...opts })
 			if (Number.isFinite(v)) { acc += v; cnt++ }
-			prev = Float64Array.from(mag)
 		}
 		return cnt ? acc / cnt : 0
 	},
