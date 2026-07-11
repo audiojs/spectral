@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "type": "module",
   "sideEffects": false,
   "description": "Spectral features — umbrella for @audio/spectral-* atoms (centroid, spread, flatness, rolloff, flux, slope, crest, zcr)",
@@ -61,5 +61,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/audiojs/spectral.git"
-  }
+  },
+  "funding": "https://github.com/sponsors/audiojs"
 }

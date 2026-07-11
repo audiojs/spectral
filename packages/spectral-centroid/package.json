@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-centroid",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Spectral centroid — magnitude-weighted mean frequency (Hz). Peeters 2004 §6.1.",
   "type": "module",
   "sideEffects": false,
@@ -10,7 +10,8 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "centroid.js"
+    "centroid.js",
+    "index.d.ts"
   ],
   "keywords": [
     "audio",
@@ -27,9 +28,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "types": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/audiojs/spectral.git",
     "directory": "packages/spectral-centroid"
-  }
+  },
+  "funding": "https://github.com/sponsors/audiojs"
 }

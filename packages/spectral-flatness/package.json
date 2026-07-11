@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-flatness",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Spectral flatness — geometric/arithmetic mean ratio of the POWER spectrum, 0 (tonal) … 1 (noise).",
   "type": "module",
   "sideEffects": false,
@@ -10,7 +10,8 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "flatness.js"
+    "flatness.js",
+    "index.d.ts"
   ],
   "keywords": [
     "audio",
@@ -27,9 +28,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "types": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/audiojs/spectral.git",
     "directory": "packages/spectral-flatness"
-  }
+  },
+  "funding": "https://github.com/sponsors/audiojs"
 }

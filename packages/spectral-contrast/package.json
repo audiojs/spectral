@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-contrast",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Spectral contrast — per-octave peak/valley difference (Jiang 2002, librosa parity)",
   "type": "module",
   "sideEffects": false,
@@ -16,7 +16,8 @@
   "files": [
     "contrast.js",
     "audio.js",
-    "audio.d.ts"
+    "audio.d.ts",
+    "index.d.ts"
   ],
   "keywords": [
     "audio",
@@ -35,10 +36,12 @@
   "dependencies": {
     "fourier-transform": "^2.3.1"
   },
+  "types": "index.d.ts",
   "audio": "./audio.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/audiojs/spectral.git",
     "directory": "packages/spectral-contrast"
-  }
+  },
+  "funding": "https://github.com/sponsors/audiojs"
 }

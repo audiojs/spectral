@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-rolloff",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "Spectral rolloff — frequency below which \\`p\\` of total spectral energy lies (default 85%).",
   "type": "module",
   "sideEffects": false,
@@ -16,7 +16,8 @@
   "files": [
     "rolloff.js",
     "audio.js",
-    "audio.d.ts"
+    "audio.d.ts",
+    "index.d.ts"
   ],
   "keywords": [
     "audio",
@@ -36,10 +37,12 @@
   "dependencies": {
     "fourier-transform": "^2.3.1"
   },
+  "types": "index.d.ts",
   "audio": "./audio.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/audiojs/spectral.git",
     "directory": "packages/spectral-rolloff"
-  }
+  },
+  "funding": "https://github.com/sponsors/audiojs"
 }

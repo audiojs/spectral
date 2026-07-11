@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-harmonics",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Harmonic descriptors — inharmonicity, tristimulus, odd/even ratio from f0 (essentia parity)",
   "type": "module",
   "sideEffects": false,
@@ -10,7 +10,8 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "harmonics.js"
+    "harmonics.js",
+    "index.d.ts"
   ],
   "dependencies": {
     "fourier-transform": "^2.2.0"
@@ -29,9 +30,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "types": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/audiojs/spectral.git",
     "directory": "packages/spectral-harmonics"
-  }
+  },
+  "funding": "https://github.com/sponsors/audiojs"
 }

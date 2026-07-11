@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-freeze",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Spectral freeze — sustain a spectral frame with phase dispersion (Spectral Time class)",
   "type": "module",
   "sideEffects": false,
@@ -10,7 +10,8 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "freeze.js"
+    "freeze.js",
+    "index.d.ts"
   ],
   "dependencies": {
     "fourier-transform": "^2.2.0"
@@ -29,9 +30,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "types": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/audiojs/spectral.git",
     "directory": "packages/spectral-freeze"
-  }
+  },
+  "funding": "https://github.com/sponsors/audiojs"
 }

@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-edit",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Spectral editing — gain on time×frequency regions via COLA-normalized STFT (Audacity/afftfilt class)",
   "type": "module",
   "sideEffects": false,
@@ -10,7 +10,8 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "edit.js"
+    "edit.js",
+    "index.d.ts"
   ],
   "dependencies": {
     "fourier-transform": "^2.2.0"
@@ -30,9 +31,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "types": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/audiojs/spectral.git",
     "directory": "packages/spectral-edit"
-  }
+  },
+  "funding": "https://github.com/sponsors/audiojs"
 }

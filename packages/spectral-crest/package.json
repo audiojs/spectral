@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-crest",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Spectral crest — peak-to-mean ratio of the POWER spectrum (≥1; high = peaky/tonal).",
   "type": "module",
   "sideEffects": false,
@@ -10,7 +10,8 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "crest.js"
+    "crest.js",
+    "index.d.ts"
   ],
   "keywords": [
     "audio",
@@ -27,9 +28,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "types": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/audiojs/spectral.git",
     "directory": "packages/spectral-crest"
-  }
+  },
+  "funding": "https://github.com/sponsors/audiojs"
 }
