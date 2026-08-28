@@ -1,9 +1,9 @@
 {
   "name": "@audio/spectral",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "type": "module",
   "sideEffects": false,
-  "description": "Spectral features — umbrella for @audio/spectral-* atoms (centroid, spread, flatness, rolloff, flux, slope, crest, zcr)",
+  "description": "Spectral features \u2014 umbrella for @audio/spectral-* atoms (centroid, spread, flatness, rolloff, flux, slope, crest, zcr)",
   "workspaces": [
     "packages/*"
   ],

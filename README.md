@@ -1,5 +1,7 @@
 # @audio/spectral
 
+Try it in the browser: [Spectrogram](https://audiojs.dev/util/spectrogram/). Runs on this package, nothing is uploaded.
+
 > Spectral features — centroid, spread, flatness, rolloff, flux, slope, crest, zcr. Shipped.
 
 Also shipped: `spectral-mfcc` (librosa parity), `spectral-ltas` (adaptive/match-EQ substrate), `spectral-edit` (time×frequency region editing — Audacity/afftfilt class), `spectral-harmonics` (inharmonicity/tristimulus/odd-even from f0).
