@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "cqt.js",
   "exports": {
-    ".": "./cqt.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./cqt.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

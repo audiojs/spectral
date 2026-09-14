@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "harmonics.js",
   "exports": {
-    ".": "./harmonics.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./harmonics.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

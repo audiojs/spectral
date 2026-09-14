@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "slope.js",
   "exports": {
-    ".": "./slope.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./slope.js"
+    },
     "./audio": {
       "types": "./audio.d.ts",
       "default": "./audio.js"

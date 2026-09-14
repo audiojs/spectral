@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "pvoc.js",
   "exports": {
-    ".": "./pvoc.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./pvoc.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

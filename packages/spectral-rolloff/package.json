@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "rolloff.js",
   "exports": {
-    ".": "./rolloff.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./rolloff.js"
+    },
     "./audio": {
       "types": "./audio.d.ts",
       "default": "./audio.js"

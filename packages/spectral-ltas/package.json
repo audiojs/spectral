@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "ltas.js",
   "exports": {
-    ".": "./ltas.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./ltas.js"
+    },
     "./audio": {
       "types": "./audio.d.ts",
       "default": "./audio.js"

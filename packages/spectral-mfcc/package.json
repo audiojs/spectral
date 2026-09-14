@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "mfcc.js",
   "exports": {
-    ".": "./mfcc.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./mfcc.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

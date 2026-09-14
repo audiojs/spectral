@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "zcr.js",
   "exports": {
-    ".": "./zcr.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./zcr.js"
+    },
     "./audio": {
       "types": "./audio.d.ts",
       "default": "./audio.js"

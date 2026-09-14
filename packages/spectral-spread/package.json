@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "spread.js",
   "exports": {
-    ".": "./spread.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./spread.js"
+    },
     "./audio": {
       "types": "./audio.d.ts",
       "default": "./audio.js"

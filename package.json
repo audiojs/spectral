@@ -3,7 +3,7 @@
   "version": "1.2.4",
   "type": "module",
   "sideEffects": false,
-  "description": "Spectral features \u2014 umbrella for @audio/spectral-* atoms (centroid, spread, flatness, rolloff, flux, slope, crest, zcr)",
+  "description": "Spectral features — umbrella for @audio/spectral-* atoms (centroid, spread, flatness, rolloff, flux, slope, crest, zcr)",
   "workspaces": [
     "packages/*"
   ],
@@ -21,11 +21,15 @@
   },
   "main": "index.js",
   "exports": {
-    ".": "./index.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
-    "index.js"
+    "index.js",
+    "*.d.ts"
   ],
   "scripts": {
     "test": "node test.js",
@@ -62,5 +66,6 @@
     "type": "git",
     "url": "git+https://github.com/audiojs/spectral.git"
   },
-  "funding": "https://github.com/sponsors/audiojs"
+  "funding": "https://github.com/sponsors/audiojs",
+  "types": "./index.d.ts"
 }

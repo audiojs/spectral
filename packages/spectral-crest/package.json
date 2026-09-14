@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "crest.js",
   "exports": {
-    ".": "./crest.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./crest.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

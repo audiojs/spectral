@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "flatness.js",
   "exports": {
-    ".": "./flatness.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./flatness.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "freeze.js",
   "exports": {
-    ".": "./freeze.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./freeze.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

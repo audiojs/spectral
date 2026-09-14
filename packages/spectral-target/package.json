@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "target.js",
   "exports": {
-    ".": "./target.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./target.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

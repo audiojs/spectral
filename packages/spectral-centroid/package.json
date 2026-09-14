@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "centroid.js",
   "exports": {
-    ".": "./centroid.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./centroid.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

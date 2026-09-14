@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "flux.js",
   "exports": {
-    ".": "./flux.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./flux.js"
+    },
     "./audio": {
       "types": "./audio.d.ts",
       "default": "./audio.js"

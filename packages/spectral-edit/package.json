@@ -6,7 +6,10 @@
   "sideEffects": false,
   "main": "edit.js",
   "exports": {
-    ".": "./edit.js",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./edit.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
