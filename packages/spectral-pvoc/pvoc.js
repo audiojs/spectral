@@ -122,11 +122,18 @@ function lobeGain(dw, N) {
 // same RMS-preserving collision policy as `scatterGated`.
 // `reset` skips phase-derivative estimation (first frame, or a caller-detected phase
 // discontinuity such as a transient) and uses the analysis phase directly instead of
-// integrating. `syn` is the caller-owned running per-bin phase accumulator (persists across
-// frames). `newMag`/`newPhase`/`peakMag` are caller-owned scratch sized `half+1`, zero-filled
+// integrating. `syn` holds frame-center phases indexed by SOURCE bin, including each
+// peak's neighbours so moving peaks inherit coherent history. NaN marks untracked bins.
+// `newMag`/`newPhase`/`peakMag` are caller-owned scratch sized `half+1`, zero-filled
 // by the caller; `peakDest`/`peakSynPhase` are caller-owned scratch sized `peaks.length`.
 export function scatterLocked(mag, phase, prevPhase, reset, peaks, ratio, ctx, syn, newMag, newPhase, peakDest, peakSynPhase, peakMag) {
   let { half, hop, freqPerBin } = ctx
+  // Without a resolved partial there is no pitch to move. Preserve DC and
+  // short boundary frames rather than dropping their energy; re-seed later peaks.
+  if (!peaks.length) {
+    for (let k = 0; k <= half; k++) { newMag[k] = mag[k]; newPhase[k] = phase[k]; syn[k] = NaN }
+    return
+  }
   if (_boost.length <= half) _boost = new Float64Array(half + 1)
   for (let i = 0; i < peaks.length; i++) {
     let k = peaks[i]
@@ -142,10 +149,11 @@ export function scatterLocked(mag, phase, prevPhase, reset, peaks, ratio, ctx, s
     // within ±half a bin — where the scalloping model below is accurate.
     let destBin = k + Math.round((shifted - trueFreq) / freqPerBin)
     if (destBin < 0 || destBin > half) { peakDest[i] = -1; continue }
-    let newSyn = reset ? phase[k] : wrapPhase(syn[destBin] + shifted * hop)
+    // Center-referenced phase survives destination-bin changes (each bin adds π
+    // at N/2). Read all previous phases before updating source-bin history below.
+    let newSyn = reset || !Number.isFinite(syn[k]) ? phase[k] + k * Math.PI : wrapPhase(syn[k] + shifted * hop)
     peakDest[i] = destBin
-    peakSynPhase[i] = newSyn
-    syn[destBin] = newSyn
+    peakSynPhase[i] = newSyn - destBin * Math.PI
     let r = lobeGain(shifted - (trueFreq + (destBin - k) * freqPerBin), ctx.N)
     _boost[i] = 1 / (r * r)
   }
@@ -157,12 +165,13 @@ export function scatterLocked(mag, phase, prevPhase, reset, peaks, ratio, ctx, s
   let eIn = 0, eOut = 0
   for (let k = 0; k <= half; k++) {
     let pi = nearestPeak(peaks, k)
-    if (pi < 0) continue
+    if (pi < 0) { syn[k] = NaN; continue }
     let destBin = peakDest[pi]
-    if (destBin < 0) continue
+    if (destBin < 0) { syn[k] = NaN; continue }
     let e = mag[k] * mag[k]
     eIn += e
     let pk = peaks[pi]
+    syn[k] = wrapPhase(peakSynPhase[pi] + destBin * Math.PI + (phase[k] - phase[pk]) + (k - pk) * Math.PI)
     let dest = destBin + (k - pk)
     if (dest < 0 || dest > half) continue
     eOut += e

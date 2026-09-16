@@ -43,7 +43,7 @@ export function scatterGated(
 
 /**
  * Laroche-Dolson rigid-ROI peak-locked bin scatter — phase-coherent shift by `ratio`.
- * `syn` is the caller-owned running per-bin phase accumulator (persists across frames), mutated in place.
+ * `syn` is the caller-owned running frame-center phase accumulator indexed by source bin (NaN means untracked), mutated in place.
  * `newMag`/`newPhase`/`peakMag` are caller-owned scratch sized `half+1`; `peakDest`/`peakSynPhase` sized `peaks.length`. All zero-filled before the call.
  */
 export function scatterLocked(

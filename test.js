@@ -217,7 +217,7 @@ test('cqt — semitone-spaced bins peak at the played notes', () => {
 })
 
 // ── @audio/spectral-pvoc ──
-import { findPeaks, nearestPeak, lockPhase, makeFrameRatio, wrapPhase, PI2 } from '@audio/spectral-pvoc'
+import { findPeaks, nearestPeak, lockPhase, makeFrameRatio, wrapPhase, PI2, scatterLocked } from '@audio/spectral-pvoc'
 
 test('spectral-pvoc — findPeaks locates isolated spectral peaks', () => {
   let half = 512
@@ -381,4 +381,55 @@ test('spectral-target × spectral-ltas — pink noise LTAS deviates ~0 dB from t
 		if (f >= 100 && f <= 10000) maxAbs = Math.max(maxAbs, Math.abs(dev[k]))
 	}
 	ok(maxAbs <= 1.5, `pink-noise LTAS vs pink target within ${maxAbs.toFixed(2)} dB, 100 Hz–10 kHz`)
+})
+
+
+test('spectral-pvoc — locked scatter tracks source phases across silence and bin moves', () => {
+  const ctx = { N: 32, half: 16, hop: 8, freqPerBin: PI2 / 32 }
+  const create = () => ({ syn: new Float64Array(17), prev: null })
+  const frame = (state, peak, ratio, n, reset = false) => {
+    const mag = new Float64Array(17), phase = new Float64Array(17)
+    if (peak) { mag[peak] = 1; mag[peak - 1] = mag[peak + 1] = .5 }
+    for (let k = 0; k <= 16; k++) phase[k] = wrapPhase(.13 * k + n * k * ctx.freqPerBin * ctx.hop)
+    const out = new Float64Array(17), angles = new Float64Array(17)
+    scatterLocked(mag, phase, state.prev, reset || !state.prev, peak ? [peak] : [], ratio,
+      ctx, state.syn, out, angles, new Int32Array(1), new Float64Array(1), new Float64Array(17))
+    state.prev = phase
+    return { mag, phase, out, angles }
+  }
+  const a = create()
+  is([...frame(a, 0, 1, 0).out].every(x => x === 0), true, 'silent frame')
+  for (const [n, peak] of [[1, 3], [2, 4], [3, 3]]) {
+    const f = frame(a, peak, 1, n)
+    for (let k = peak - 1; k <= peak + 1; k++) {
+      almost(f.out[k], f.mag[k], 1e-12, 'unity magnitude')
+      almost(wrapPhase(f.angles[k] - f.phase[k]), 0, 1e-12, 'unity phase after peak moves')
+    }
+  }
+  const b = create(), c = create()
+  const first = frame(b, 3, 1, 0)
+  frame(c, 8, .8, 0) // Interleaving must not share phase history.
+  const moved = frame(b, 3, 1.7, 1), dest = 5
+  const expected = first.angles[3] + 3 * Math.PI + 3 * ctx.freqPerBin * 1.7 * ctx.hop - dest * Math.PI
+  almost(wrapPhase(moved.angles[dest] - expected), 0, 1e-12, 'destination move preserves center phase')
+  frame(b, 0, 1, 2)
+  const resumed = frame(b, 6, 1, 3)
+  almost(wrapPhase(resumed.angles[6] - resumed.phase[6]), 0, 1e-12, 'new peak after silence initializes from analysis')
+  const reset = frame(b, 6, 1, 4, true)
+  almost(wrapPhase(reset.angles[6] - reset.phase[6]), 0, 1e-12, 'explicit reset')
+})
+
+
+test('spectral-pvoc — unresolved boundary frames preserve energy, including DC-only input', () => {
+  for (const half of [0, 1, 16]) {
+    const mag = Float64Array.from({ length: half + 1 }, (_, k) => 1 / (k + 1))
+    const phase = Float64Array.from(mag, (_, k) => .2 * k)
+    const out = new Float64Array(half + 1), angles = out.slice(), syn = out.slice()
+    scatterLocked(mag, phase, null, true, [], 1.5,
+      { N: Math.max(2, half * 2), half, hop: 1, freqPerBin: Math.PI / Math.max(1, half) },
+      syn, out, angles, new Int32Array(0), new Float64Array(0), out.slice())
+    ok(out.every((x, k) => x === mag[k]), 'no resolved pitch: preserve magnitude')
+    ok(angles.every((x, k) => x === phase[k]), 'preserve phase')
+    ok(syn.every(Number.isNaN), 'next resolved peak starts fresh')
+  }
 })
