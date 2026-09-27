@@ -217,7 +217,7 @@ test('cqt — semitone-spaced bins peak at the played notes', () => {
 })
 
 // ── @audio/spectral-pvoc ──
-import { findPeaks, nearestPeak, lockPhase, makeFrameRatio, wrapPhase, PI2, scatterLocked } from '@audio/spectral-pvoc'
+import { findPeaks, nearestPeak, lockPhase, lockMap, lockState, lockAdvance, makeFrameRatio, wrapPhase, PI2, scatterLocked } from '@audio/spectral-pvoc'
 
 test('spectral-pvoc — findPeaks locates isolated spectral peaks', () => {
   let half = 512
@@ -250,6 +250,45 @@ test('spectral-pvoc — lockPhase rigidly co-rotates a peak region', () => {
   lockPhase(phase, prop, mag, half)
   ok(Math.abs(prop[31] - (phase[31] + 1.0)) < 1e-12, 'shoulder locked to peak rotation')
   ok(Math.abs(prop[33] - (phase[33] + 1.0)) < 1e-12, 'other shoulder locked')
+})
+
+test('spectral-pvoc — lockMap: peaks and quiet bins stay free, the rest ride the nearest peak up to halfway', () => {
+  let half = 64, mag = new Float64Array(half + 1), owner = new Int32Array(half + 1)
+  // peaks at 20 and 40, sloping to a valley at 30; bin 10 under 3% of peak 20
+  for (let k = 20; k <= 30; k++) mag[k] = 1 - 0.08 * (k - 20)
+  for (let k = 31; k <= 40; k++) mag[k] = 0.8 - 0.06 * (40 - k)
+  mag[19] = 0.5; mag[41] = 0.4; mag[10] = 0.01
+  lockMap(mag, half, owner)
+  is([owner[20], owner[40]], [-1, -1], 'peaks are free')
+  is([owner[19], owner[21], owner[30], owner[31], owner[39], owner[41]], [20, 20, 20, 40, 40, 40], 'bins ride their peak, the region ending halfway between')
+  is([owner[10], owner[50]], [-1, -1], 'a bin under 3% of its peak, and a silent one, are free')
+})
+
+test('spectral-pvoc — lockAdvance: reset passes the spectrum; magnitudes kept; locked bins keep their offset to the peak', () => {
+  let half = 64, w = PI2 / (2 * half), st = lockState(half)
+  // two partials near bins 20 and 40 with shoulders, phases advancing at their own frequencies; silence elsewhere
+  let frame = t => {
+    let re = new Float64Array(half + 1), im = new Float64Array(half + 1)
+    for (let [c, a, f] of [[20, 1, 20.3], [40, 0.8, 39.8]]) for (let k = c - 3; k <= c + 3; k++) {
+      let m = a * (1 - Math.abs(k - c) / 4), ph = f * w * 256 * t + 0.3 * (k - c)
+      re[k] = m * Math.cos(ph); im[k] = m * Math.sin(ph)
+    }
+    return [re, im]
+  }
+  let mags = (re, im) => re.map((v, k) => Math.hypot(v, im[k]))
+  let arg = (re, im, k, p) => Math.atan2(im[k] * re[p] - re[k] * im[p], re[k] * re[p] + im[k] * im[p])  // arg(X_k / X_p)
+  let [re, im] = frame(0), x0 = re.slice(), y0 = im.slice()
+  st.mag.set(mags(re, im))
+  lockAdvance(re, im, st, true, 256, 205, w, half)
+  ok(re.every((v, k) => Math.abs(v - x0[k]) < 1e-12 && Math.abs(im[k] - y0[k]) < 1e-12), 'reset: synthesis = analysis')
+  for (let t = 1; t < 5; t++) {
+    [re, im] = frame(t)
+    let ar = re.slice(), ai = im.slice(), m = mags(re, im)
+    st.mag.set(m)
+    lockAdvance(re, im, st, false, 256, 205, w, half)
+    ok(m.every((v, k) => Math.abs(Math.hypot(re[k], im[k]) - v) < 1e-12), `frame ${t}: every bin keeps its magnitude, silent ones stay silent`)
+    ok([17, 19, 21, 23, 37, 39, 41, 43].every(k => { let p = k < 30 ? 20 : 40; return Math.abs(arg(re, im, k, p) - arg(ar, ai, k, p)) < 1e-9 }), `frame ${t}: locked bins keep their analysis offset to the peak`)
+  }
 })
 
 // ── @audio/spectral-zcr ──

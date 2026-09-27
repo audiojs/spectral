@@ -13,6 +13,8 @@ import { findPeaks, scatterLocked, lockPhase, makeFrameRatio } from '@audio/spec
 | `scatterGated(mag, phase, prevPhase, ratio, ctx, …scratch)` | Bernsee/SMB peak-gated bin scatter — pitch shift by ratio, RMS-preserving collisions |
 | `scatterLocked(mag, phase, prevPhase, reset, peaks, ratio, ctx, …scratch)` | Laroche-Dolson rigid-ROI scatter — phase-coherent shift |
 | `lockPhase(phase, propPhase, mag, half)` | lock non-peak bins to their peak's rotation (time-stretch coherence) |
+| `lockMap(mag, half, owner)` | which peak each bin locks to (−1: free) — the regions `lockPhase` uses |
+| `lockState(half)` / `lockAdvance(re, im, st, reset, anaHop, synHop, freqPerBin, half)` | the phase-locked vocoder frame on complex bins: locked bins rotate by one complex multiply, only free bins take trig |
 | `findPeaks(mag, half)` / `nearestPeak(peaks, k)` | local-maxima peak indices + nearest lookup |
 | `makeFrameRatio(ratio)` | scalar or time-varying ratio → per-frame resolver |
 | `wrapPhase(p)` / `WIN_GAIN` / `PI2` | phase wrap, Hann OLA gain constant |

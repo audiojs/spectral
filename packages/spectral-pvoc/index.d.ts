@@ -77,3 +77,33 @@ export function lockPhase(
   mag: Float32Array | Float64Array,
   half: number,
 ): void
+
+/**
+ * Which peak each bin locks to, into `owner` (sized ≥ `half+1`): the peak whose rotation bin k takes, or −1 for a
+ * free bin (a peak itself, or under 3% of its peak's magnitude). The regions `lockPhase` uses; returns `owner`.
+ */
+export function lockMap(mag: Float32Array | Float64Array, half: number, owner: Int32Array): Int32Array
+
+/** Complex-domain locked-vocoder state over `half+1` bins; the caller fills `mag` with each frame's magnitudes. */
+export interface LockState {
+  mag: Float64Array
+  owner: Int32Array
+  xr: Float64Array
+  xi: Float64Array
+  xm: Float64Array
+  ur: Float64Array
+  ui: Float64Array
+}
+
+/** State for `lockAdvance` over `half+1` bins. */
+export function lockState(half: number): LockState
+
+/**
+ * One phase-locked vocoder frame on complex bins, in place: `re`/`im` hold the analysis bins, then the synthesis bins
+ * (`st.mag` = this frame's magnitudes). `reset` restarts synthesis phases at the analysis phases (first frame,
+ * transient); otherwise free bins advance at their instantaneous frequency and locked bins take their peak's rotation.
+ */
+export function lockAdvance(
+  re: Float64Array, im: Float64Array, st: LockState, reset: boolean,
+  anaHop: number, synHop: number, freqPerBin: number, half: number,
+): void
