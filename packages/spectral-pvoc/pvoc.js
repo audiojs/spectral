@@ -6,7 +6,7 @@
 //   - scatterGated: Bernsee/SMB peak-gated bin scatter (pitch shift by ratio)
 //   - scatterLocked: Laroche-Dolson rigid-ROI peak-locked scatter (phase coherent)
 //   - lockPhase: lock non-peak bin phases to their nearest peak's rotation (time stretch)
-//   - lockMap: which peak each bin locks to — the same regions, for complex-domain locking
+//   - lockMap: which peak each bin locks to, the same regions, for complex-domain locking
 //   - lockState / lockAdvance: the phase-locked vocoder step on complex bins (no polar round trip)
 //   - findPeaks / nearestPeak / makeFrameRatio / wrapPhase: the supporting primitives
 
@@ -248,7 +248,7 @@ function peakMask(mag, half) {
 }
 
 // Which bins ride which peak: `owner[k]` = the peak whose rotation bin k takes (its region of
-// influence reaches halfway to the neighbouring peaks), or -1 for a free bin — a peak itself, or a
+// influence reaches halfway to the neighbouring peaks), or -1 for a free bin: a peak itself, or a
 // bin under 3% of its peak's magnitude, which keeps its own phase advance. Returns `owner`.
 let _peakBins = new Int32Array(0)
 export function lockMap(mag, half, owner) {
@@ -281,7 +281,7 @@ export function lockPhase(phase, propPhase, mag, half) {
 // ── Complex-domain phase locking ──
 // The propagate-then-lockPhase vocoder step on complex bins (pair with fourier-transform/stft's `complex` frames).
 // A bin riding a peak takes the peak's rotation R = Y(p)·conj(X(p))/|X(p)|², Y(k) = X(k)·R: one complex multiply,
-// the identity locking of Laroche & Dolson. Only free bins — the peaks, and bins too quiet to lock — advance at
+// the identity locking of Laroche & Dolson. Only free bins (the peaks, and bins too quiet to lock) advance at
 // their instantaneous frequency, one atan2 and one sin/cos each. State keeps unit synthesis phasors and the previous
 // analysis bins, so no bin needs its phase as an angle.
 

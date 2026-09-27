@@ -252,7 +252,7 @@ test('spectral-pvoc — lockPhase rigidly co-rotates a peak region', () => {
   ok(Math.abs(prop[33] - (phase[33] + 1.0)) < 1e-12, 'other shoulder locked')
 })
 
-test('spectral-pvoc — lockMap: peaks and quiet bins stay free, the rest ride the nearest peak up to halfway', () => {
+test('spectral-pvoc – lockMap: peaks and quiet bins stay free, the rest ride the nearest peak up to halfway', () => {
   let half = 64, mag = new Float64Array(half + 1), owner = new Int32Array(half + 1)
   // peaks at 20 and 40, sloping to a valley at 30; bin 10 under 3% of peak 20
   for (let k = 20; k <= 30; k++) mag[k] = 1 - 0.08 * (k - 20)
@@ -264,7 +264,7 @@ test('spectral-pvoc — lockMap: peaks and quiet bins stay free, the rest ride t
   is([owner[10], owner[50]], [-1, -1], 'a bin under 3% of its peak, and a silent one, are free')
 })
 
-test('spectral-pvoc — lockAdvance: reset passes the spectrum; magnitudes kept; locked bins keep their offset to the peak', () => {
+test('spectral-pvoc – lockAdvance: reset passes the spectrum; magnitudes kept; locked bins keep their offset to the peak', () => {
   let half = 64, w = PI2 / (2 * half), st = lockState(half)
   // two partials near bins 20 and 40 with shoulders, phases advancing at their own frequencies; silence elsewhere
   let frame = t => {
