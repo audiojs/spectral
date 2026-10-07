@@ -26,6 +26,6 @@ Stage-2 EQ, and Match-by-Reference.
 
 Edge policies: below the lowest anchor holds flat, above the highest continues the last
 segment's slope, interpolation is log-frequency linear. Every curve is mean-normalized to 0 dB
-over its own defined band; `deviation()` band-limits and tapers to exactly 0 outside
-`[20 Hz, 0.45·fs]`. Full citations, exact tables, and the manifest-less rationale are in
+over its own defined band, which it carries (`.band`); `deviation()` levels both curves per
+octave over that band (a plain array: `[20 Hz, 0.45·fs]`) and tapers to exactly 0 outside it. Full citations, exact tables, and the manifest-less rationale are in
 `packages/spectral-target/README.md`.

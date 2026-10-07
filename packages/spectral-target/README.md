@@ -20,7 +20,7 @@ let smoothed = smooth(someDbCurve, { fs, oct: 1 / 3 })
 | export | role |
 |---|---|
 | `target(name \| anchors, { fs=44100, bins=2049 })` | render `'speech'` \| `'music'` \| `'pink'` \| `'voice-music'` or a custom `[[freqHz, dB], …]` table to a dB-per-bin curve |
-| `deviation(measuredLtas, targetDb, { fs=44100, smoothOct=1/3, clamp=12 })` | `target − measured` → EQ correction curve, dB per bin |
+| `deviation(measuredLtas, targetDb, { fs=44100, smoothOct=1/3, clamp=12, band })` | `target − measured` over the target's band (`band`, or the curve's `.band`) → EQ correction curve, dB per bin |
 | `smooth(db, { fs=44100, oct=1/3 })` | fractional-octave smoothing of any per-bin dB curve |
 
 ## Sources
@@ -67,10 +67,17 @@ low/high extension), pulled down 6 dB so the blend doesn't read hotter than eith
   `[100, 4000]` Hz — the paper's own measured range — so `deviation()` guidance built from a
   *rendered* `'music'` curve is naturally quietest right at that band's edges; combine with
   `'pink'` or a custom table if you need sourced full-band guidance.
-- **`deviation()`'s own band** is fixed at `[20 Hz, 0.45·fs]` regardless of which target was
-  rendered (it has no anchor metadata to read — `targetDb` is a plain array by design). Outside
-  that band, correction tapers to exactly 0 over a 0.5-octave raised-cosine ramp at each edge
-  (no ultrasonic/DC boosts, and no discontinuous jump in the correction curve).
+- **`deviation()`'s band** is the target's own: a curve `target()` returns carries its defined
+  band as `.band` (`[100, 10000]` for `'speech'`, `[100, 4000]` for `'music'`), where its anchors
+  make it known; `{ band }` overrides it, and a plain array (a reference's LTAS) gets
+  `[20 Hz, 0.45·fs]`. Both curves are levelled by their mean over the band in log frequency, each
+  octave weighing alike, and their difference is held at the band's edge bins beyond it, so the
+  smoothing draws nothing from past it. Toward each edge the correction tapers to exactly 0 over a
+  0.5-octave raised-cosine ramp (no ultrasonic/DC boosts, no jump in the correction curve).
+  1.0 levelled by the mean of the bins over `[20 Hz, 0.45·fs]` for every target: the octave under
+  fs/2 holds half the bins, and a preset is extrapolated past its anchors, so a voice with the
+  speech target's shape under 10 kHz and falling away above read 12 dB over the target through
+  the mids and was given treble to 16 kHz (`@audio/chain` 0.3's EQ: clean speech's PESQ 4.64 → 4.27).
 
 ## Manifest
 

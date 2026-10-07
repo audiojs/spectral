@@ -12,9 +12,9 @@ export interface TargetOptions {
 
 /**
  * Render a preset or custom anchor table to a dB-per-bin curve, mean-normalized to 0 dB over
- * its own defined band = [lowest anchor, min(highest anchor, 0.45·fs)].
+ * its own defined band = [lowest anchor, min(highest anchor, 0.45·fs)], which it carries as `.band`.
  */
-export default function target(name: TargetPreset | TargetAnchors, options?: TargetOptions): Float32Array
+export default function target(name: TargetPreset | TargetAnchors, options?: TargetOptions): Float32Array & { band: [number, number] }
 
 export interface SmoothOptions {
   /** sample rate, default 44100 */
@@ -33,10 +33,12 @@ export interface DeviationOptions {
   smoothOct?: number
   /** correction clamp, dB, default 12 */
   clamp?: number
+  /** [lo, hi] Hz the correction is drawn and the curves levelled over; default the target's `.band`, else [20, 0.45·fs] */
+  band?: [number, number]
 }
 
 /**
- * (measured LTAS, target) → EQ correction curve, dB per bin (target − measured, smoothed,
- * clamped, tapered to exactly 0 outside [20 Hz, 0.45·fs]).
+ * (measured LTAS, target) → EQ correction curve, dB per bin: target − measured, each levelled by its
+ * mean over the band in log frequency, smoothed, clamped, tapered to exactly 0 outside the band.
  */
 export function deviation(measuredLtas: Float32Array, targetDb: Float32Array, options?: DeviationOptions): Float32Array

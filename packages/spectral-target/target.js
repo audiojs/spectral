@@ -119,7 +119,14 @@ export default function target (name, opts = {}) {
 	let raw = renderAnchors(anchors, fs, bins)
 	let lo = anchors[0][0]
 	let hi = Math.min(anchors[anchors.length - 1][0], NYQUIST_MARGIN * fs)
-	return normalizeToBand(raw, fs, n, lo, hi)
+	return withBand(normalizeToBand(raw, fs, n, lo, hi), lo, hi)
+}
+
+// The curve carries its defined band, [lo, hi] Hz, where its anchors make it known: deviation() reads it, and
+// draws no correction from the extrapolation past it.
+function withBand (curve, lo, hi) {
+	curve.band = [lo, hi]
+	return curve
 }
 
 function renderVoiceMusic ({ fs = 44100, bins = 2049 } = {}) {
@@ -130,7 +137,7 @@ function renderVoiceMusic ({ fs = 44100, bins = 2049 } = {}) {
 	for (let k = 0; k < bins; k++) raw[k] = Math.max(s[k], m[k]) - VOICE_MUSIC_HEADROOM_DB
 	let lo = Math.min(SPEECH[0][0], MUSIC[0][0])
 	let hi = Math.min(Math.max(SPEECH[SPEECH.length - 1][0], MUSIC[MUSIC.length - 1][0]), NYQUIST_MARGIN * fs)
-	return normalizeToBand(raw, fs, n, lo, hi)
+	return withBand(normalizeToBand(raw, fs, n, lo, hi), lo, hi)
 }
 
 /**
@@ -176,26 +183,32 @@ function taper (f, lo, hi) {
 }
 
 /**
- * (measured LTAS, target) → EQ correction curve. Both sides are independently band-limited and
- * mean-normalized over [20 Hz, 0.45·fs] (so absolute level never leaks into tone), subtracted,
- * fractional-octave smoothed, clamped, then tapered to exactly 0 at and beyond the band edges.
+ * (measured LTAS, target) → EQ correction curve, over `band` = [lo, hi] Hz: the target's own (what `target()` returns
+ * carries it as `.band`: where its anchors make it known) or, for a plain array, [20 Hz, 0.45·fs]. Each side is levelled
+ * by its mean over the band in log frequency, every octave weighing alike, so absolute level never leaks into tone and
+ * no octave outweighs another; then subtracted (held at the band's edges beyond them), fractional-octave smoothed,
+ * clamped, and tapered to exactly 0 at and beyond the band's edges. 1.0 levelled by the mean of the bins over [20 Hz, 0.45·fs], where the octave over 10 kHz
+ * holds half of them and a preset is extrapolated past its anchors: a voice band-limited at 10 kHz, the speech target's
+ * shape under it, read 12 dB over the target through the mids and was given treble to 16 kHz.
  * @param {Float32Array} measuredLtas — linear RMS magnitude per bin, e.g. from @audio/spectral-ltas
  * @param {Float32Array} targetDb — dB per bin, e.g. from target()
- * @param {object} opts — { fs=44100, smoothOct=1/3, clamp=12 }
+ * @param {object} opts: { fs=44100, smoothOct=1/3, clamp=12, band }
  * @returns {Float32Array} correction dB per bin (target − measured), finite everywhere
  */
-export function deviation (measuredLtas, targetDb, { fs = 44100, smoothOct = 1 / 3, clamp = 12 } = {}) {
+export function deviation (measuredLtas, targetDb, { fs = 44100, smoothOct = 1 / 3, clamp = 12, band } = {}) {
 	let bins = targetDb.length
 	let n = 2 * (bins - 1)
-	let lo = 20, hi = NYQUIST_MARGIN * fs
+	let [lo, hi] = band ?? targetDb.band ?? [20, NYQUIST_MARGIN * fs]
+	lo = Math.max(lo, fs / n), hi = Math.min(hi, NYQUIST_MARGIN * fs)
 
 	let measuredDb = new Float32Array(bins)
 	for (let k = 0; k < bins; k++) measuredDb[k] = 20 * Math.log10(Math.max(measuredLtas[k] || 0, 1e-12))
 
-	let t = normalizeToBand(targetDb, fs, n, lo, hi)
-	let m = normalizeToBand(measuredDb, fs, n, lo, hi)
+	// outside the band the difference is held at the band's edge bin, so smoothing draws nothing from beyond it
+	let lt = octaveMean(targetDb, fs, n, lo, hi), lm = octaveMean(measuredDb, fs, n, lo, hi)
+	let k0 = Math.max(1, Math.ceil(lo * n / fs)), k1 = Math.min(bins - 1, Math.floor(hi * n / fs))
 	let raw = new Float32Array(bins)
-	for (let k = 0; k < bins; k++) raw[k] = t[k] - m[k]
+	for (let k = 0; k < bins; k++) { let j = Math.min(k1, Math.max(k0, k)); raw[k] = (targetDb[j] - lt) - (measuredDb[j] - lm) }
 
 	let sm = smooth(raw, { fs, oct: smoothOct })
 
@@ -206,4 +219,13 @@ export function deviation (measuredLtas, targetDb, { fs = 44100, smoothOct = 1 /
 		if (g > 0) out[k] = Math.max(-clamp, Math.min(clamp, sm[k])) * g
 	}
 	return out
+}
+
+// Mean of `db[k]` over bins in [lo, hi] Hz in log frequency: bin k weighs 1/k, the share of an octave it spans, so
+// every octave weighs alike (a bin mean gives the octave under fs/2 half the weight).
+function octaveMean (db, fs, n, lo, hi) {
+	let k0 = Math.max(1, Math.ceil(lo * n / fs)), k1 = Math.min(db.length - 1, Math.floor(hi * n / fs))
+	let sum = 0, w = 0
+	for (let k = k0; k <= k1; k++) { sum += db[k] / k; w += 1 / k }
+	return w ? sum / w : 0
 }

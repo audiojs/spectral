@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-target",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Target-curve library — per-content-type LTAS targets (speech/music/pink/voice-music) + deviation math for adaptive/match EQ",
   "type": "module",
   "sideEffects": false,

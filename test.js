@@ -397,6 +397,28 @@ test('deviation — clamp bounds the correction everywhere, even under extreme m
 	ok(maxAbs <= clamp + 1e-6, `|correction| ≤ ${clamp} dB everywhere (max ${maxAbs.toFixed(2)})`)
 })
 
+// 1.0 levelled both curves by the mean of their bins over [20 Hz, 0.45·fs]: the octave under fs/2 holds half the bins,
+// and a preset is extrapolated past its anchors (speech held flat past 10 kHz), so a voice whose spectrum is the target's
+// under 10 kHz and falls away above read ~12 dB over the target through the mids, and was given treble to 16 kHz.
+test('deviation: a voice band-limited at 10 kHz, the speech target\'s shape under it, reads no correction (the target\'s band)', () => {
+	let fs = 48000, bins = 2049, n = 2 * (bins - 1)
+	let td = target('speech', { fs, bins })
+	let m = Float32Array.from(td, (db, k) => 10 ** ((db - (k * fs / n > 10000 ? 40 : 0)) / 20))
+	let dev = deviation(m, td, { fs }), maxAbs = 0
+	for (let k = 1; k < bins; k++) maxAbs = Math.max(maxAbs, Math.abs(dev[k]))
+	ok(maxAbs <= 0.05, `max |correction| ${maxAbs.toFixed(2)} dB`)
+	is(String(td.band), '100,10000', 'the target carries its anchors\' band')
+})
+
+test('deviation: levelled per octave: a curve 20 dB down under 1 kHz is met halfway, +10 under and −10 over', () => {
+	let fs = 48000, bins = 2049, n = 2 * (bins - 1), bin = f => Math.round(f * n / fs)
+	let td = target([[100, 0], [10000, 0]], { fs, bins })     // flat over 100 Hz–10 kHz: 1 decade either side of 1 kHz
+	let m = Float32Array.from(td, (db, k) => 10 ** ((db - (k * fs / n < 1000 ? 20 : 0)) / 20))
+	let dev = deviation(m, td, { fs, smoothOct: 1 / 3 })
+	almost(dev[bin(300)], 10, 0.5, `300 Hz ${dev[bin(300)].toFixed(2)} dB`)
+	almost(dev[bin(3000)], -10, 0.5, `3 kHz ${dev[bin(3000)].toFixed(2)} dB`)
+})
+
 test('smooth — a single-bin spike is reduced ≥6 dB by 1/3-oct smoothing, total mean preserved', () => {
 	let fs = 44100, bins = 2049
 	let db = new Float32Array(bins)
