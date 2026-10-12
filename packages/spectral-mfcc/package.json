@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-mfcc",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MFCC — mel-frequency cepstral coefficients (FFT → mel triangles → log → DCT-II)",
   "type": "module",
   "sideEffects": false,

@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-cqt",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Constant-Q transform — log-frequency spectrum, Q-scaled windows (Brown 1991)",
   "type": "module",
   "sideEffects": false,

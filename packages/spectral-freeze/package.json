@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-freeze",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Spectral freeze — sustain a spectral frame with phase dispersion (Spectral Time class)",
   "type": "module",
   "sideEffects": false,
