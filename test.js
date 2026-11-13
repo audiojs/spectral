@@ -217,7 +217,7 @@ test('cqt — semitone-spaced bins peak at the played notes', () => {
 })
 
 // ── @audio/spectral-pvoc ──
-import { findPeaks, nearestPeak, lockPhase, lockMap, lockState, lockAdvance, makeFrameRatio, wrapPhase, PI2, scatterLocked } from '@audio/spectral-pvoc'
+import { findPeaks, nearestPeak, lockPhase, lockMap, lockState, lockAdvance, lockStep, makeFrameRatio, wrapPhase, PI2, scatterLocked } from '@audio/spectral-pvoc'
 
 test('spectral-pvoc — findPeaks locates isolated spectral peaks', () => {
   let half = 512
@@ -289,6 +289,65 @@ test('spectral-pvoc – lockAdvance: reset passes the spectrum; magnitudes kept;
     ok(m.every((v, k) => Math.abs(Math.hypot(re[k], im[k]) - v) < 1e-12), `frame ${t}: every bin keeps its magnitude, silent ones stay silent`)
     ok([17, 19, 21, 23, 37, 39, 41, 43].every(k => { let p = k < 30 ? 20 : 40; return Math.abs(arg(re, im, k, p) - arg(ar, ai, k, p)) < 1e-9 }), `frame ${t}: locked bins keep their analysis offset to the peak`)
   }
+})
+
+test('spectral-pvoc – lockAdvance: free bins advance at their instantaneous frequency, by the table and kernels within 1e-12 rad of Math\'s angle', () => {
+  // noise-like frames (most quiet bins free), whole hops: the table path; the angle Math gives it, the reference
+  let half = 1024, N = 2 * half, w = PI2 / N, A = 511, S = 409, st = lockState(half), seed = 5
+  let rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32 - 0.5
+  let frame = () => [Float64Array.from({ length: half + 1 }, rnd), Float64Array.from({ length: half + 1 }, rnd)]
+  let worst = 0, free = 0
+  for (let t = 0; t < 6; t++) {
+    let [re, im] = frame()
+    im[0] = im[half] = 0
+    let pr = st.xr.slice(), pi = st.xi.slice(), pm = st.xm.slice(), ur = st.ur.slice(), ui = st.ui.slice(), xr = re.slice(), xi = im.slice()
+    st.mag.set(re.map((v, k) => Math.hypot(v, im[k])))
+    lockAdvance(re, im, st, t === 0, A, S, w, half)
+    if (!t) continue
+    for (let k = 1; k < half; k++) {
+      if (st.owner[k] >= 0 || !st.mag[k] || !pm[k]) continue
+      let d = Math.atan2(xi[k] * pr[k] - xr[k] * pi[k], xr[k] * pr[k] + xi[k] * pi[k])
+      let dp = wrapPhase(d - k * w * A), a = (k * w + dp / A) * S
+      let er = ur[k] * Math.cos(a) - ui[k] * Math.sin(a), ei = ur[k] * Math.sin(a) + ui[k] * Math.cos(a)
+      worst = Math.max(worst, Math.hypot(st.ur[k] - er, st.ui[k] - ei)); free++
+    }
+  }
+  ok(free > 1000, `${free} free bins checked`)
+  ok(worst < 1e-12, `largest difference ${worst.toExponential(2)}`)
+})
+
+test('spectral-pvoc – lockAdvance and lockStep: the WebAssembly kernel gives the JS loop\'s bits', () => {
+  // the state lockState makes where WebAssembly does not run: lockAdvance takes the JS loop on it
+  let plain = half => { let n = half + 1, f = () => new Float64Array(n); return { mag: f(), owner: new Int32Array(n), xr: f(), xi: f(), xm: f(), ur: f(), ui: f() } }
+  let seed = 9, rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32 - 0.5
+  // partials over noise, some bins exactly zero, a silent frame now and then: every path of the step
+  let frame = (half, t) => {
+    let re = Float64Array.from({ length: half + 1 }, () => t % 7 === 3 ? 0 : 0.01 * rnd()), im = re.map(() => t % 7 === 3 ? 0 : 0.01 * rnd())
+    for (let [c, a] of [[half / 8 + 0.3, 1], [half / 3 + 0.7, 0.5]]) for (let k = Math.max(0, Math.floor(c) - 3); k <= Math.min(half, Math.floor(c) + 3); k++) {
+      let ph = c * 0.37 * t + 0.2 * k
+      re[k] += a / (1 + Math.abs(k - c)) * Math.cos(ph); im[k] += a / (1 + Math.abs(k - c)) * Math.sin(ph)
+    }
+    for (let k = 0; k <= half; k += 13) re[k] = im[k] = 0
+    im[0] = im[half] = 0
+    return [re, im]
+  }
+  let same = (a, b) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]))
+  let kernel = 0, bad = 0
+  for (let half of [2, 4, 64, 1024]) for (let step of [false, true]) {
+    let N = 2 * half, w = PI2 / N, a = plain(half), b = lockState(half)
+    if ('k' in b) kernel++
+    for (let t = 0; t < 40; t++) {
+      let A = Math.max(1, Math.round(N / 4 * (0.7 + 0.3 * Math.sin(t)))), S = Math.max(1, Math.floor(N / 5)), reset = t === 0 || t === 20
+      let [re, im] = frame(half, t), re2 = re.slice(), im2 = im.slice()
+      a.mag.set(re.map((v, k) => Math.sqrt(v * v + im[k] * im[k])))
+      lockAdvance(re, im, a, reset, A, S, w, half)
+      if (step) lockStep(re2, im2, b, reset, A, S, w, half)
+      else { b.mag.set(re2.map((v, k) => Math.sqrt(v * v + im2[k] * im2[k]))); lockAdvance(re2, im2, b, reset, A, S, w, half) }
+      if (!same(re, re2) || !same(im, im2) || !['mag', 'xr', 'xi', 'xm', 'ur', 'ui'].every(k => same(a[k], b[k])) || !reset && !same(a.owner, b.owner)) bad++
+    }
+  }
+  ok(typeof WebAssembly !== 'object' || kernel === 8, 'the states run on the kernel where WebAssembly runs')
+  is(bad, 0, 'every frame the same bits: synthesis bins, magnitudes, the state and the lock map')
 })
 
 // ── @audio/spectral-zcr ──

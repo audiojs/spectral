@@ -14,7 +14,8 @@ import { findPeaks, scatterLocked, lockPhase, makeFrameRatio } from '@audio/spec
 | `scatterLocked(mag, phase, prevPhase, reset, peaks, ratio, ctx, …scratch)` | Laroche-Dolson rigid-ROI scatter — phase-coherent shift |
 | `lockPhase(phase, propPhase, mag, half)` | lock non-peak bins to their peak's rotation (time-stretch coherence) |
 | `lockMap(mag, half, owner)` | which peak each bin locks to (−1: free): the regions `lockPhase` uses |
-| `lockState(half)` / `lockAdvance(re, im, st, reset, anaHop, synHop, freqPerBin, half)` | the phase-locked vocoder frame on complex bins: locked bins rotate by one complex multiply, only free bins take trig |
+| `lockState(half)` / `lockAdvance(re, im, st, reset, anaHop, synHop, freqPerBin, half)` | the phase-locked vocoder frame on complex bins: locked bins rotate by one complex multiply, only free bins take trig; with whole hops, a WebAssembly SIMD kernel on the state's own memory, the JS loop's bits |
+| `lockStep(re, im, st, reset, anaHop, synHop, freqPerBin, half)` | `lockAdvance` with the frame's magnitudes taken from its bins first |
 | `findPeaks(mag, half)` / `nearestPeak(peaks, k)` | local-maxima peak indices + nearest lookup |
 | `makeFrameRatio(ratio)` | scalar or time-varying ratio → per-frame resolver |
 | `wrapPhase(p)` / `WIN_GAIN` / `PI2` | phase wrap, Hann OLA gain constant |

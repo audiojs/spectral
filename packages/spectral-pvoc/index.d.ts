@@ -107,3 +107,9 @@ export function lockAdvance(
   re: Float64Array, im: Float64Array, st: LockState, reset: boolean,
   anaHop: number, synHop: number, freqPerBin: number, half: number,
 ): void
+
+/** `lockAdvance` with this frame's magnitudes, √(re² + im²), taken from its bins into `st.mag` first. */
+export function lockStep(
+  re: Float64Array, im: Float64Array, st: LockState, reset: boolean,
+  anaHop: number, synHop: number, freqPerBin: number, half: number,
+): void
