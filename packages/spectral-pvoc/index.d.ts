@@ -113,3 +113,26 @@ export function lockStep(
   re: Float64Array, im: Float64Array, st: LockState, reset: boolean,
   anaHop: number, synHop: number, freqPerBin: number, half: number,
 ): void
+
+/** State for `lockJoint` over `half+1` bins of `channels` channels. */
+export interface JointState {
+  st: LockState
+  re: Float64Array
+  im: Float64Array
+  fr: Float64Array
+  fi: Float64Array
+  xr: Float64Array[]
+  xi: Float64Array[]
+}
+
+export function jointState(half: number, channels: number): JointState
+
+/**
+ * One phase-locked vocoder frame of every channel, in place, one rotation for all: `res[c]`/`ims[c]` hold channel c's
+ * analysis bins, then its synthesis bins. The step runs on a reference (the channels' root power, its phase advanced by
+ * the angle of Σ X·conj(X′) over the channels), so the level and phase between channels stay the input's in every frame.
+ */
+export function lockJoint(
+  res: Float64Array[], ims: Float64Array[], j: JointState, reset: boolean,
+  anaHop: number, synHop: number, freqPerBin: number, half: number,
+): void

@@ -16,6 +16,7 @@ import { findPeaks, scatterLocked, lockPhase, makeFrameRatio } from '@audio/spec
 | `lockMap(mag, half, owner)` | which peak each bin locks to (−1: free): the regions `lockPhase` uses |
 | `lockState(half)` / `lockAdvance(re, im, st, reset, anaHop, synHop, freqPerBin, half)` | the phase-locked vocoder frame on complex bins: locked bins rotate by one complex multiply, only free bins take trig; with whole hops, a WebAssembly SIMD kernel on the state's own memory, the JS loop's bits |
 | `lockStep(re, im, st, reset, anaHop, synHop, freqPerBin, half)` | `lockAdvance` with the frame's magnitudes taken from its bins first |
+| `jointState(half, channels)` / `lockJoint(res, ims, j, reset, anaHop, synHop, freqPerBin, half)` | that frame for several channels at once, one rotation for all: the step runs on a reference (the channels' root power, its phase advanced by the angle of Σ X·conj(X′) over them) and its rotation turns every channel's bin, so the level and phase between channels stay the input's; the kernel's passes with whole hops, the JS loops' bits |
 | `findPeaks(mag, half)` / `nearestPeak(peaks, k)` | local-maxima peak indices + nearest lookup |
 | `makeFrameRatio(ratio)` | scalar or time-varying ratio → per-frame resolver |
 | `wrapPhase(p)` / `WIN_GAIN` / `PI2` | phase wrap, Hann OLA gain constant |

@@ -217,7 +217,7 @@ test('cqt — semitone-spaced bins peak at the played notes', () => {
 })
 
 // ── @audio/spectral-pvoc ──
-import { findPeaks, nearestPeak, lockPhase, lockMap, lockState, lockAdvance, lockStep, makeFrameRatio, wrapPhase, PI2, scatterLocked } from '@audio/spectral-pvoc'
+import { findPeaks, nearestPeak, lockPhase, lockMap, lockState, lockAdvance, lockStep, jointState, lockJoint, makeFrameRatio, wrapPhase, PI2, scatterLocked } from '@audio/spectral-pvoc'
 
 test('spectral-pvoc — findPeaks locates isolated spectral peaks', () => {
   let half = 512
@@ -503,6 +503,90 @@ test('spectral-target × spectral-ltas — pink noise LTAS deviates ~0 dB from t
 	ok(maxAbs <= 1.5, `pink-noise LTAS vs pink target within ${maxAbs.toFixed(2)} dB, 100 Hz–10 kHz`)
 })
 
+
+// Channels of one sound: partials the channels share, each at its own level and phase in every channel, over noise of
+// each channel's own; with `gaps`, a silent frame now and then and some bins exactly zero
+const jointFrames = (half, nch, seed = 3, gaps = true) => {
+  let rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32 - 0.5
+  let lv = Array.from({ length: nch }, (_, c) => [1 - 0.3 * c, 0.4 + 0.2 * c]), off = Array.from({ length: nch }, (_, c) => [0.9 * c, -1.7 * c])
+  return t => {
+    let res = [], ims = []
+    for (let c = 0; c < nch; c++) {
+      let quiet = gaps && t % 7 === 3
+      let re = Float64Array.from({ length: half + 1 }, () => quiet ? 0 : 0.01 * rnd()), im = re.map(() => quiet ? 0 : 0.01 * rnd())
+      if (!quiet) [[half / 8 + 0.3, 0], [half / 3 + 0.7, 1]].forEach(([f, i]) => {
+        for (let k = Math.max(0, Math.floor(f) - 3); k <= Math.min(half, Math.floor(f) + 3); k++) {
+          let ph = f * 0.37 * t + 0.2 * k + off[c][i], a = lv[c][i] / (1 + Math.abs(k - f))
+          re[k] += a * Math.cos(ph); im[k] += a * Math.sin(ph)
+        }
+      })
+      if (gaps) for (let k = 0; k <= half; k += 13) re[k] = im[k] = 0
+      im[0] = im[half] = 0
+      res.push(re); ims.push(im)
+    }
+    return [res, ims]
+  }
+}
+
+test('spectral-pvoc – lockJoint: every channel keeps its magnitudes, and its level and phase against the others, in every frame', () => {
+  let half = 256, N = 2 * half, w = PI2 / N, nch = 3, j = jointState(half, nch), frame = jointFrames(half, nch), worstMag = 0, worstRatio = 0, turned = 0
+  for (let t = 0; t < 30; t++) {
+    let [res, ims] = frame(t), xr = res.map(a => a.slice()), xi = ims.map(a => a.slice())
+    lockJoint(res, ims, j, t === 0, 128, 103, w, half)
+    for (let k = 0; k <= half; k++) {
+      for (let c = 0; c < nch; c++) worstMag = Math.max(worstMag, Math.abs(Math.hypot(res[c][k], ims[c][k]) - Math.hypot(xr[c][k], xi[c][k])))
+      // Y_c·conj(Y_0) against X_c·conj(X_0): the cross spectrum of two channels, their level and phase apart
+      for (let c = 1; c < nch; c++) {
+        let yr = res[c][k] * res[0][k] + ims[c][k] * ims[0][k], yi = ims[c][k] * res[0][k] - res[c][k] * ims[0][k]
+        let ar = xr[c][k] * xr[0][k] + xi[c][k] * xi[0][k], ai = xi[c][k] * xr[0][k] - xr[c][k] * xi[0][k]
+        worstRatio = Math.max(worstRatio, Math.hypot(yr - ar, yi - ai))
+      }
+      if (t && Math.hypot(res[0][k] - xr[0][k], ims[0][k] - xi[0][k]) > 1e-3) turned++
+    }
+  }
+  ok(worstMag < 1e-12, `magnitudes kept: ${worstMag.toExponential(2)}`)
+  ok(worstRatio < 1e-12, `the cross spectrum between channels kept: ${worstRatio.toExponential(2)}`)
+  ok(turned > 100, `the bins do turn (${turned} of them): the hops differ`)
+})
+
+test('spectral-pvoc – lockJoint: one channel is lockStep\'s frame; channels of one signal at different levels take its rotation', () => {
+  // no silence in them: a bin that wakes from nothing has no advance to measure, and each step gives it an angle of its own
+  let half = 256, N = 2 * half, w = PI2 / N, frame = jointFrames(half, 1, 3, false), one = jointState(half, 1), st = lockState(half), two = jointState(half, 2), worst = 0, worst2 = 0
+  for (let t = 0; t < 30; t++) {
+    let [[re], [im]] = frame(t), a = re.slice(), b = im.slice(), l = re.slice(), li = im.slice(), r = re.map(v => 0.25 * v), ri = im.map(v => 0.25 * v)
+    lockJoint([re], [im], one, t === 0, 128, 103, w, half)
+    lockStep(a, b, st, t === 0, 128, 103, w, half)
+    lockJoint([l, r], [li, ri], two, t === 0, 128, 103, w, half)
+    for (let k = 0; k <= half; k++) {
+      worst = Math.max(worst, Math.hypot(re[k] - a[k], im[k] - b[k]))
+      worst2 = Math.max(worst2, Math.hypot(l[k] - a[k], li[k] - b[k]), Math.hypot(4 * r[k] - a[k], 4 * ri[k] - b[k]))
+    }
+  }
+  ok(worst < 1e-9, `one channel: within ${worst.toExponential(2)} of lockStep`)
+  ok(worst2 < 1e-9, `a signal and a quarter of it: each within ${worst2.toExponential(2)} of lockStep on it`)
+})
+
+test('spectral-pvoc – lockJoint: the WebAssembly kernel gives the JS loop\'s bits', () => {
+  // the state jointState makes where WebAssembly does not run: lockJoint takes the JS loops on it
+  let plain = (half, nch) => { let n = half + 1, f = () => new Float64Array(n), each = () => Array.from({ length: nch }, f); return { st: { mag: f(), owner: new Int32Array(n), xr: f(), xi: f(), xm: f(), ur: f(), ui: f() }, re: f(), im: f(), fr: f().fill(1), fi: f(), xr: each(), xi: each() } }
+  let same = (a, b) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]))
+  let kernel = 0, bad = 0, frames = 0
+  for (let half of [2, 4, 64, 1024]) for (let nch of [1, 2, 3, 5]) {
+    let N = 2 * half, w = PI2 / N, a = plain(half, nch), b = jointState(half, nch), frame = jointFrames(half, nch, 11 + nch)
+    if (b.st.k?.ref) kernel++
+    for (let t = 0; t < 40; t++, frames++) {
+      // whole hops (the kernel's), a fractional one now and then (the loops on the kernel's memory), a reset mid-way
+      let A = Math.max(1, Math.round(N / 4 * (0.7 + 0.3 * Math.sin(t)))) + (t % 9 === 5 ? 0.5 : 0), S = Math.max(1, Math.floor(N / 5)), reset = t === 0 || t === 20
+      let [res, ims] = frame(t), res2 = res.map(x => x.slice()), ims2 = ims.map(x => x.slice())
+      lockJoint(res, ims, a, reset, A, S, w, half)
+      lockJoint(res2, ims2, b, reset, A, S, w, half)
+      let state = ['re', 'im', 'fr', 'fi'].every(k => same(a[k], b[k])) && ['mag', 'xr', 'xi', 'xm', 'ur', 'ui'].every(k => same(a.st[k], b.st[k])) && a.xr.every((x, c) => same(x, b.xr[c]) && same(a.xi[c], b.xi[c]))
+      if (!res.every((x, c) => same(x, res2[c]) && same(ims[c], ims2[c])) || !state) bad++
+    }
+  }
+  ok(typeof WebAssembly !== 'object' || kernel === 16, 'the states run on the kernel where WebAssembly runs')
+  is(bad, 0, `${frames} frames the same bits: every channel's synthesis bins, the reference and the state`)
+})
 
 test('spectral-pvoc — locked scatter tracks source phases across silence and bin moves', () => {
   const ctx = { N: 32, half: 16, hop: 8, freqPerBin: PI2 / 32 }

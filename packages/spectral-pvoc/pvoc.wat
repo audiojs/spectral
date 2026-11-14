@@ -8,7 +8,8 @@
 ;; wat2wasm pvoc.wat -o pvoc.wasm && node scripts/wasm.js
 ;; Memory, n = half + 1 bins, each array of f64 B = 8·n2 bytes (n2: n + 1 rounded up to even): re im mag xr xi xm ur ui, the
 ;; free bins' y x q cos sin, the regions' rotation re im, at 0, B … 14B; the turns' cos and sin (N = 2·half each) at 15B
-;; and 15B + 8N; then int32 n2 each: owner, the free bins by the table, the other free bins, the peaks.
+;; and 15B + 8N; then int32 n2 each: owner, the free bins by the table, the other free bins, the peaks. A joint state's
+;; arrays after them, from byte J (ref and turn, below).
 (module
   (import "m" "atan2" (func $matan2 (param f64 f64) (result f64)))
   (import "m" "cos" (func $mcos (param f64) (result f64)))
@@ -402,4 +403,82 @@
       (v128.store (local.get $o) (f64x2.mul (local.get $vmag) (local.get $vur)))
       (v128.store (i32.add (local.get $im) (local.get $o)) (f64x2.mul (local.get $vmag) (local.get $vui)))
       (br_if $dl (i32.lt_s (local.tee $o (i32.add (local.get $o) (i32.const 16))) (local.get $end)))))
+
+  ;; ref(half, nch, J), turn(half, nch, J): lockJoint's two passes (pvoc.js) around lock, on the same memory. At J the
+  ;; reference's unit phase, re then im (B bytes each); from J + 2B each channel's four arrays: this frame's bins, re and
+  ;; im, then the frame before's. Two bins to a float64x2, the same float64 ops in the same order as the JS, both arms
+  ;; of its branches taken and one kept: the same bits.
+  ;; ref: the channels' power and Σ X·conj(X′); the phase turned on by that sum's angle where it has one; this frame the
+  ;; one before from here on; the root power into mag, the reference into re and im
+  (func (export "ref") (param $half i32) (param $nch i32) (param $J i32)
+    (local $B i32) (local $end i32) (local $o i32) (local $c i32) (local $q i32)
+    (local $p v128) (local $cr v128) (local $ci v128) (local $a v128) (local $b v128) (local $pa v128) (local $pb v128)
+    (local $m v128) (local $ur v128) (local $ui v128) (local $on v128) (local $nr v128) (local $ni v128)
+    (local.set $B (i32.shl (i32.and (i32.add (local.get $half) (i32.const 3)) (i32.const -2)) (i32.const 3)))
+    (local.set $end (i32.shl (i32.add (local.get $half) (i32.const 1)) (i32.const 3)))
+    (loop $k
+      (local.set $p (v128.const f64x2 0 0))
+      (local.set $cr (v128.const f64x2 0 0))
+      (local.set $ci (v128.const f64x2 0 0))
+      (local.set $q (i32.add (i32.add (local.get $J) (i32.shl (local.get $B) (i32.const 1))) (local.get $o)))
+      (local.set $c (i32.const 0))
+      (loop $ch
+        (local.set $a (v128.load (local.get $q)))
+        (local.set $b (v128.load (i32.add (local.get $q) (local.get $B))))
+        (local.set $pa (v128.load (i32.add (local.get $q) (i32.shl (local.get $B) (i32.const 1)))))
+        (local.set $pb (v128.load (i32.add (local.get $q) (i32.mul (local.get $B) (i32.const 3)))))
+        (local.set $p (f64x2.add (local.get $p) (f64x2.add (f64x2.mul (local.get $a) (local.get $a)) (f64x2.mul (local.get $b) (local.get $b)))))
+        (local.set $cr (f64x2.add (local.get $cr) (f64x2.add (f64x2.mul (local.get $a) (local.get $pa)) (f64x2.mul (local.get $b) (local.get $pb)))))
+        (local.set $ci (f64x2.add (local.get $ci) (f64x2.sub (f64x2.mul (local.get $b) (local.get $pa)) (f64x2.mul (local.get $a) (local.get $pb)))))
+        (v128.store (i32.add (local.get $q) (i32.shl (local.get $B) (i32.const 1))) (local.get $a))
+        (v128.store (i32.add (local.get $q) (i32.mul (local.get $B) (i32.const 3))) (local.get $b))
+        (local.set $q (i32.add (local.get $q) (i32.shl (local.get $B) (i32.const 2))))
+        (br_if $ch (i32.lt_s (local.tee $c (i32.add (local.get $c) (i32.const 1))) (local.get $nch))))
+      (local.set $m (f64x2.sqrt (f64x2.add (f64x2.mul (local.get $cr) (local.get $cr)) (f64x2.mul (local.get $ci) (local.get $ci)))))
+      (local.set $ur (v128.load (i32.add (local.get $J) (local.get $o))))
+      (local.set $ui (v128.load (i32.add (i32.add (local.get $J) (local.get $B)) (local.get $o))))
+      (local.set $on (f64x2.gt (local.get $m) (v128.const f64x2 0 0)))
+      (local.set $nr (v128.bitselect
+        (f64x2.div (f64x2.sub (f64x2.mul (local.get $ur) (local.get $cr)) (f64x2.mul (local.get $ui) (local.get $ci))) (local.get $m))
+        (local.get $ur) (local.get $on)))
+      (local.set $ni (v128.bitselect
+        (f64x2.div (f64x2.add (f64x2.mul (local.get $ur) (local.get $ci)) (f64x2.mul (local.get $ui) (local.get $cr))) (local.get $m))
+        (local.get $ui) (local.get $on)))
+      (v128.store (i32.add (local.get $J) (local.get $o)) (local.get $nr))
+      (v128.store (i32.add (i32.add (local.get $J) (local.get $B)) (local.get $o)) (local.get $ni))
+      (local.set $m (f64x2.sqrt (local.get $p)))
+      (v128.store (i32.add (i32.shl (local.get $B) (i32.const 1)) (local.get $o)) (local.get $m))
+      (v128.store (local.get $o) (f64x2.mul (local.get $m) (local.get $nr)))
+      (v128.store (i32.add (local.get $B) (local.get $o)) (f64x2.mul (local.get $m) (local.get $ni)))
+      (br_if $k (i32.lt_s (local.tee $o (i32.add (local.get $o) (i32.const 16))) (local.get $end)))))
+
+  ;; turn: the reference's rotation, its synthesis bin (re, im after lock) over its analysis one, Y·conj(X)/|X|², on
+  ;; every channel's bin; a bin with no power stays
+  (func (export "turn") (param $half i32) (param $nch i32) (param $J i32)
+    (local $B i32) (local $end i32) (local $o i32) (local $c i32) (local $q i32)
+    (local $m v128) (local $on v128) (local $re v128) (local $im v128) (local $fr v128) (local $fi v128)
+    (local $rr v128) (local $ri v128) (local $a v128) (local $b v128)
+    (local.set $B (i32.shl (i32.and (i32.add (local.get $half) (i32.const 3)) (i32.const -2)) (i32.const 3)))
+    (local.set $end (i32.shl (i32.add (local.get $half) (i32.const 1)) (i32.const 3)))
+    (loop $k
+      (local.set $m (v128.load (i32.add (i32.shl (local.get $B) (i32.const 1)) (local.get $o))))
+      (local.set $on (f64x2.gt (local.get $m) (v128.const f64x2 0 0)))
+      (local.set $re (v128.load (local.get $o)))
+      (local.set $im (v128.load (i32.add (local.get $B) (local.get $o))))
+      (local.set $fr (v128.load (i32.add (local.get $J) (local.get $o))))
+      (local.set $fi (v128.load (i32.add (i32.add (local.get $J) (local.get $B)) (local.get $o))))
+      (local.set $rr (f64x2.div (f64x2.add (f64x2.mul (local.get $re) (local.get $fr)) (f64x2.mul (local.get $im) (local.get $fi))) (local.get $m)))
+      (local.set $ri (f64x2.div (f64x2.sub (f64x2.mul (local.get $im) (local.get $fr)) (f64x2.mul (local.get $re) (local.get $fi))) (local.get $m)))
+      (local.set $q (i32.add (i32.add (local.get $J) (i32.shl (local.get $B) (i32.const 1))) (local.get $o)))
+      (local.set $c (i32.const 0))
+      (loop $ch
+        (local.set $a (v128.load (local.get $q)))
+        (local.set $b (v128.load (i32.add (local.get $q) (local.get $B))))
+        (v128.store (local.get $q) (v128.bitselect
+          (f64x2.sub (f64x2.mul (local.get $a) (local.get $rr)) (f64x2.mul (local.get $b) (local.get $ri))) (local.get $a) (local.get $on)))
+        (v128.store (i32.add (local.get $q) (local.get $B)) (v128.bitselect
+          (f64x2.add (f64x2.mul (local.get $a) (local.get $ri)) (f64x2.mul (local.get $b) (local.get $rr))) (local.get $b) (local.get $on)))
+        (local.set $q (i32.add (local.get $q) (i32.shl (local.get $B) (i32.const 2))))
+        (br_if $ch (i32.lt_s (local.tee $c (i32.add (local.get $c) (i32.const 1))) (local.get $nch))))
+      (br_if $k (i32.lt_s (local.tee $o (i32.add (local.get $o) (i32.const 16))) (local.get $end)))))
 )

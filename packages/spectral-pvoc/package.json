@@ -1,6 +1,6 @@
 {
   "name": "@audio/spectral-pvoc",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Phase-vocoder engine — peak-gated and peak-locked spectral bin scatter (Bernsee, Laroche-Dolson), phase locking, peak finding; powers @audio/shift-pvoc* and @audio/stretch-pvoc*",
   "type": "module",
   "sideEffects": false,
