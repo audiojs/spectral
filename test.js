@@ -136,6 +136,32 @@ test('mfcc — 13 coefficients; c1..12 gain-invariant; timbres differ', () => {
 	ok(Math.sqrt(dist) > 1, 'sine vs saw timbres separate')
 })
 
+test('mfcc — tables kept by their parameters: every call the dense definition, to the bit', () => {
+	// the definition, built whole on every call: a dense triangle per band over all bins, the DCT's cosines in the sum
+	const hz2mel = f => 2595 * Math.log10(1 + f / 700), mel2hz = m => 700 * (10 ** (m / 2595) - 1)
+	function dense (data, { fs = 44100, bins = 13, nMel = 40, fmin = 0, fmax = fs / 2 } = {}) {
+		let n = data.length, half = n / 2, [re, im] = fft(Float64Array.from(data)), lo = hz2mel(fmin), hi = hz2mel(fmax)
+		let c = Array.from({ length: nMel + 2 }, (_, i) => mel2hz(lo + (hi - lo) * i / (nMel + 1)) * n / fs), log = []
+		for (let m = 0; m < nMel; m++) {
+			let e = 0
+			for (let k = 0; k <= half; k++) {
+				let w = k < Math.ceil(c[m]) || k >= Math.min(c[m + 2], half + 1) ? 0 : k < c[m + 1] ? (k - c[m]) / (c[m + 1] - c[m]) : (c[m + 2] - k) / (c[m + 2] - c[m + 1])
+				e += (re[k] * re[k] + im[k] * im[k]) * (w < 0 ? 0 : w)
+			}
+			log.push(Math.log(e + 1e-10))
+		}
+		return Float32Array.from({ length: bins }, (_, k) => log.reduce((s, v, m) => s + v * Math.cos(Math.PI * k * (2 * m + 1) / (2 * nMel)), 0))
+	}
+	// parameter sets taking turns, so a table kept under too few of them would serve the wrong call
+	let sets = [{ fs }, { fs: 16000 }, { fs, bins: 20 }, { fs, nMel: 26 }, { fs, fmin: 300, fmax: 8000 }, { fs: 48000, nMel: 128, bins: 40 }]
+	for (let round = 0; round < 2; round++) for (let n of [256, 2048]) for (let o of sets) {
+		let x = whiteNoise(n, 3 + n), got = mfcc(x, o), want = dense(x, o)
+		is(got.length, want.length)
+		ok(got.every((v, i) => Object.is(v, want[i])), `n ${n}, ${JSON.stringify(o)}`)
+	}
+	ok(mfcc(new Float64Array(64), { fs }).every(v => Number.isFinite(v)), 'silence: log of the floor, finite')
+})
+
 test('ltas — stationary tone peaks at its bin', () => {
 	let m = ltas(sine(1000, fs * 2), { frameSize: 4096 })
 	is(m.length, 2049)
@@ -623,6 +649,26 @@ test('spectral-pvoc — locked scatter tracks source phases across silence and b
   almost(wrapPhase(reset.angles[6] - reset.phase[6]), 0, 1e-12, 'explicit reset')
 })
 
+
+test('spectral-pvoc — locked scatter: every bin rides its nearest peak (nearestPeak, a tie to the lower), moved by its shift', () => {
+  // bins of their own energy, peak sets with ties (a bin halfway between two peaks), one peak, and found ones: the bins
+  // a scatter fills are exactly those the nearest peak's shift sends a bin to
+  let half = 256, ctx = { N: 512, half, hop: 128, freqPerBin: PI2 / 512 }, seed = 11, bad = 0
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+  for (let t = 0; t < 60; t++) {
+    let mag = Float64Array.from({ length: half + 1 }, () => 0.01 + rnd()), phase = Float64Array.from(mag, () => PI2 * rnd() - Math.PI)
+    let peaks = t % 3 === 0 ? [10, 20, 40, 60, 61, 200] : t % 3 === 1 ? [128] : findPeaks(mag, half), ratio = 0.6 + t / 50
+    let out = new Float64Array(half + 1), dest = new Int32Array(peaks.length)
+    scatterLocked(mag, phase, null, true, peaks, ratio, ctx, new Float64Array(half + 1), out, new Float64Array(half + 1), dest, new Float64Array(peaks.length), new Float64Array(half + 1))
+    let want = new Set()
+    for (let k = 0; k <= half; k++) {
+      let pi = nearestPeak(peaks, k), d = dest[pi] + k - peaks[pi]
+      if (dest[pi] >= 0 && d >= 0 && d <= half) want.add(d)
+    }
+    for (let k = 0; k <= half; k++) if ((out[k] > 0) !== want.has(k)) bad++
+  }
+  is(bad, 0, 'the bins filled, as nearestPeak assigns them')
+})
 
 test('spectral-pvoc — unresolved boundary frames preserve energy, including DC-only input', () => {
   for (const half of [0, 1, 16]) {

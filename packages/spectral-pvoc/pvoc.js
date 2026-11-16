@@ -165,10 +165,11 @@ export function scatterLocked(mag, phase, prevPhase, reset, peaks, ratio, ctx, s
   // destination, so the ISTFT frame stays a windowed one — only collision and
   // past-Nyquist bookkeeping need correction. Bins riding a peak whose destination
   // fell outside Nyquist are legitimately lost and excluded from the energy target.
-  let eIn = 0, eOut = 0
+  let eIn = 0, eOut = 0, lb = 0, last = peaks.length - 1
   for (let k = 0; k <= half; k++) {
-    let pi = nearestPeak(peaks, k)
-    if (pi < 0) { syn[k] = NaN; continue }
+    // nearestPeak(peaks, k), its lower bound walked up with k instead of searched for every bin
+    while (lb < last && peaks[lb] < k) lb++
+    let pi = lb > 0 && Math.abs(peaks[lb - 1] - k) <= Math.abs(peaks[lb] - k) ? lb - 1 : lb
     let destBin = peakDest[pi]
     if (destBin < 0) { syn[k] = NaN; continue }
     let e = mag[k] * mag[k]
