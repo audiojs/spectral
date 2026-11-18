@@ -21,6 +21,8 @@ export function wrapPhase(p: number): number
 
 /** Local magnitude maxima of `mag[0..half]` above a fraction of the frame's peak. Returns bin indices, ascending. */
 export function findPeaks(mag: Float32Array | Float64Array, half: number): number[]
+/** The same peaks into `out` (at least `half / 2` long: a peak's right neighbour is never one; shorter is a RangeError), their count returned: nothing allocated. */
+export function findPeaks(mag: Float32Array | Float64Array, half: number, out: Int32Array): number
 
 /** Binary-search the peak (from `findPeaks`) nearest bin `k`. Returns −1 if `peaks` is empty. */
 export function nearestPeak(peaks: number[], k: number): number
@@ -29,12 +31,14 @@ export function nearestPeak(peaks: number[], k: number): number
  * Bernsee/SMB peak-gated bin scatter — pitch shift by `ratio`, RMS-preserving collisions.
  * `newMag`/`newFreq`/`peakMag` are caller-owned scratch sized `half+1`, zero-filled before the call.
  * Writes into `newMag`/`newFreq` in place.
+ * `ratio` may be a typed array holding it at [0], as hosts hand a live value (a Float64Array keeps every bit): a ratio that
+ * is not whole, passed as a number each frame, is a number V8 allocates each frame (the function is too long to inline).
  */
 export function scatterGated(
   mag: Float32Array | Float64Array,
   phase: Float32Array | Float64Array,
   prevPhase: Float32Array | Float64Array | null,
-  ratio: number,
+  ratio: number | Float64Array,
   ctx: PvocCtx,
   newMag: Float64Array,
   newFreq: Float64Array,
@@ -45,14 +49,16 @@ export function scatterGated(
  * Laroche-Dolson rigid-ROI peak-locked bin scatter — phase-coherent shift by `ratio`.
  * `syn` is the caller-owned running frame-center phase accumulator indexed by source bin (NaN means untracked), mutated in place.
  * `newMag`/`newPhase`/`peakMag` are caller-owned scratch sized `half+1`; `peakDest`/`peakSynPhase` sized `peaks.length`. All zero-filled before the call.
+ * `count`: the peaks there are, the first ones of `peaks` (all of them when omitted), for peaks in `findPeaks`' `out`.
+ * `ratio` may be a typed array holding it at [0], as `scatterGated`'s.
  */
 export function scatterLocked(
   mag: Float32Array | Float64Array,
   phase: Float32Array | Float64Array,
   prevPhase: Float32Array | Float64Array | null,
   reset: boolean,
-  peaks: number[],
-  ratio: number,
+  peaks: ArrayLike<number>,
+  ratio: number | Float64Array,
   ctx: PvocCtx,
   syn: Float64Array,
   newMag: Float64Array,
@@ -60,6 +66,7 @@ export function scatterLocked(
   peakDest: Int32Array,
   peakSynPhase: Float64Array,
   peakMag: Float64Array,
+  count?: number,
 ): void
 
 /** Scalar or time-varying ratio → per-frame resolver. */

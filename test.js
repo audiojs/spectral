@@ -683,3 +683,100 @@ test('spectral-pvoc — unresolved boundary frames preserve energy, including DC
     ok(syn.every(Number.isNaN), 'next resolved peak starts fresh')
   }
 })
+
+// frames for the forms a real-time caller uses: partials with their lobes over a floor, a plateau now and then, silence
+function pvocFrames (half, n, seed) {
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+  return Array.from({ length: n }, (_, t) => {
+    let mag = Float64Array.from({ length: half + 1 }, () => 1e-5 * rnd()), phase = Float64Array.from(mag, () => PI2 * rnd() - Math.PI)
+    if (t % 9 === 4) mag.fill(0)
+    else for (let p = 0; p < Math.min(24, half >> 2); p++) {
+      let c = 1 + rnd() * (half - 2), a = rnd()
+      for (let k = Math.max(0, Math.floor(c) - 2); k <= Math.min(half, Math.ceil(c) + 2); k++) mag[k] += a * Math.max(0, 1 - Math.abs(k - c) / 2.5)
+    }
+    if (t % 7 === 3) mag.fill(0.7, 5, 7)
+    return { mag, phase }
+  })
+}
+
+test('spectral-pvoc – findPeaks(mag, half, out): the peaks of the array form, in out, their count returned; at most half / 2; an out too short is a RangeError', () => {
+  let bad = 0, frames = 0
+  for (const half of [2, 16, 256, 1024]) for (const { mag } of pvocFrames(half, 30, 5 + half)) {
+    let peaks = findPeaks(mag, half), out = new Int32Array(half >> 1).fill(-1), n = findPeaks(mag, half, out)
+    if (n !== peaks.length || peaks.some((k, i) => out[i] !== k)) bad++
+    frames++
+  }
+  is(bad, 0, `${frames} frames: the count and the peaks`)
+  // every odd bin a peak: half / 2 of them, out filled exactly
+  let half = 64, mag = Float64Array.from({ length: half + 1 }, (_, k) => k & 1), out = new Int32Array(half >> 1)
+  is(findPeaks(mag, half, out), half >> 1, 'every other bin: half / 2 peaks')
+  is(out[out.length - 1], half - 1, 'the last at half − 1')
+  let threw = null
+  try { findPeaks(mag, half, new Int32Array((half >> 1) - 1)) } catch (e) { threw = e }
+  ok(threw instanceof RangeError, 'an out shorter than half / 2: RangeError')
+})
+
+test('spectral-pvoc – scatterLocked with findPeaks\' out and its count, scatterGated and scatterLocked with the ratio in a Float64Array: the bits of the array and the number', async () => {
+  const { scatterGated } = await import('@audio/spectral-pvoc')
+  let bad = 0, frames = 0
+  for (const half of [16, 256, 1024]) {
+    let N = 2 * half, ctx = { N, half, hop: N >> 2, freqPerBin: PI2 / N }, z = () => new Float64Array(half + 1)
+    // two scatterLocked states, one a form, carried frame to frame; a reset now and then
+    let a = { syn: z() }, b = { syn: z() }, prev = null, list = pvocFrames(half, 40, 11 + half), cell = new Float64Array(1), out = new Int32Array(half >> 1)
+    list.forEach(({ mag, phase }, t) => {
+      let ratio = [1, 0.5, 2, 4, 0.71, 1.2599210498948732][t % 6] * (1 + t / 1000), reset = t === 0 || t % 13 === 7
+      cell[0] = ratio
+      let peaks = findPeaks(mag, half), n = findPeaks(mag, half, out)
+      let run = (p, r, st, count) => { let m = z(), q = z(), pk = z(), dest = new Int32Array(half), sp = new Float64Array(half); scatterLocked(mag, phase, reset ? null : prev, reset, p, r, ctx, st.syn, m, q, dest, sp, pk, count); return [m, q, pk, st.syn, dest.subarray(0, peaks.length)] }
+      let x = run(peaks, ratio, a), y = run(out, cell, b, n)
+      if (!x.every((v, i) => v.length === y[i].length && v.every((w, k) => Object.is(w, y[i][k])))) bad++
+      let gated = r => { let m = z(), q = z(), pk = z(); scatterGated(mag, phase, prev, r, ctx, m, q, pk); return [m, q, pk] }
+      let g = gated(ratio), h = gated(cell)
+      if (!g.every((v, i) => v.every((w, k) => Object.is(w, h[i][k])))) bad++
+      prev = phase
+      frames++
+    })
+  }
+  is(bad, 0, `${frames} frames, state carried: the same bits`)
+})
+
+// The validator's measure (@audio/compile tools/verify.js, `young`): in a child Node with its flags, a case a child, the
+// bytes V8's young generation takes in over 2^14 warm calls, read in two forced minor collections, the lesser of two runs.
+// The ratio is computed each call, as a frame computes it: a number made once would not show a number allocated a call
+const PVOC_ALLOC_CHILD = `
+import v8 from 'node:v8'
+const { findPeaks, scatterGated, scatterLocked } = await import(${JSON.stringify(new URL('./packages/spectral-pvoc/pvoc.js', import.meta.url).href)})
+const minor = { type: 'minor' }, young = s => s.reduce((a, x) => x.spaceName === 'new_space' || x.spaceName === 'new_large_object_space' ? a + x.spaceUsedSize : a, 0)
+const count = f => { const p = new v8.GCProfiler(); p.start(); gc(minor); f(); gc(minor); const g = p.stop().statistics; let y = 0; for (let i = 1; i < g.length; i++) y += young(g[i].beforeGC.heapSpaceStatistics) - young(g[i - 1].afterGC.heapSpaceStatistics); return y }
+const half = 1024, N = 2048, ctx = { N, half, hop: 512, freqPerBin: 2 * Math.PI / N }, CALLS = 1 << 14
+let s = 3; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647
+const frames = Array.from({ length: 8 }, () => {
+  let mag = Float64Array.from({ length: half + 1 }, () => 1e-4 * rnd()), phase = Float64Array.from(mag, () => 2 * Math.PI * rnd() - Math.PI)
+  for (let p = 0; p < 24; p++) { let c = 2 + rnd() * (half - 4); for (let k = Math.floor(c) - 2; k <= Math.ceil(c) + 2; k++) mag[k] += rnd() * Math.max(0, 1 - Math.abs(k - c) / 2.5) }
+  return { mag, phase }
+})
+const z = () => new Float64Array(half + 1), m = z(), q = z(), pk = z(), syn = z(), dest = new Int32Array(half), sp = new Float64Array(half), cell = new Float64Array(1)
+const peaks = frames.map(f => { let o = new Int32Array(half >> 1), n = findPeaks(f.mag, half, o); return [o, n] })
+const ratio = i => 1.2599210498948732 + (i & 7) * 1e-3
+const per = call => { const run = n => { for (let i = 0; i < n; i++) call(i, frames[i & 7], frames[(i + 7) & 7].phase) }; run(CALLS); run(CALLS); return Math.min(count(() => run(CALLS)), count(() => run(CALLS))) / CALLS }
+const cases = {
+  'findPeaks into out': () => { let o = new Int32Array(half >> 1); return per((i, f) => findPeaks(f.mag, half, o)) },
+  'scatterGated, the ratio in a Float64Array': () => per((i, f, prev) => { cell[0] = ratio(i); m.fill(0); q.fill(0); pk.fill(0); scatterGated(f.mag, f.phase, prev, cell, ctx, m, q, pk) }),
+  'scatterLocked, peaks in out with their count, the ratio in a Float64Array': () => per((i, f, prev) => { cell[0] = ratio(i); m.fill(0); q.fill(0); pk.fill(0); scatterLocked(f.mag, f.phase, prev, false, peaks[i & 7][0], cell, ctx, syn, m, q, dest, sp, pk, peaks[i & 7][1]) }),
+  'control, scatterGated, the ratio a number': () => per((i, f, prev) => { m.fill(0); q.fill(0); pk.fill(0); scatterGated(f.mag, f.phase, prev, ratio(i), ctx, m, q, pk) }),
+}
+const name = process.argv[1]
+console.log(JSON.stringify(name ? cases[name]() : Object.keys(cases)))
+`
+test('spectral-pvoc – a real-time frame\'s calls allocate nothing: findPeaks into out, scatterGated and scatterLocked with the ratio in a Float64Array', async () => {
+  const { default: v8 } = await import('node:v8')
+  if (!v8.GCProfiler) return console.warn(`skipped: Node ${process.version} has no v8.GCProfiler to count with (18.15 and later have it)`)
+  const { execFileSync } = await import('node:child_process')
+  const child = (...a) => JSON.parse(execFileSync(process.execPath, ['--expose-gc', '--no-concurrent-recompilation', '--no-allocation-site-pretenuring', '--input-type=module', '-e', PVOC_ALLOC_CHILD, ...a], { encoding: 'utf8' }))
+  for (const k of child()) {
+    const b = child(k)
+    // a ratio that is not whole, passed as a number to a function V8 does not inline, is a 16-byte number a call
+    if (k.startsWith('control')) ok(b >= 8, `the measure sees a number a call: ${k}, ${b} bytes a call`)
+    else ok(b <= 1 / 16, `${k}: ${b} bytes a call (at most 1/16)`)
+  }
+})

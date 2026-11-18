@@ -21,17 +21,20 @@ export function wrapPhase(p) {
 // ±1 comparison keeps closely-spaced chord partials whose mainlobes overlap. `>=` on the
 // left / `>` on the right reports the trailing edge of an exact-magnitude plateau exactly
 // once, instead of a strict `>` on both sides missing the whole plateau.
-export function findPeaks(mag, half) {
+// Given `out`, the peaks go into it and their count is returned: a new array a frame is an allocation a frame. A peak's
+// right neighbour is never one, so half / 2 of them at most.
+export function findPeaks(mag, half, out) {
+  if (out && out.length < half >> 1) throw new RangeError(`findPeaks: out holds ${out.length} peaks, a frame of ${half + 1} bins can have ${half >> 1}`)
   let maxM = 0
   for (let k = 0; k <= half; k++) if (mag[k] > maxM) maxM = mag[k]
   let floor = Math.max(1e-8, maxM * 0.005)
-  let peaks = []
+  let peaks = out ?? [], n = 0
   for (let k = 1; k < half; k++) {
     let v = mag[k]
     if (v < floor) continue
-    if (v >= mag[k - 1] && v > mag[k + 1]) peaks.push(k)
+    if (v >= mag[k - 1] && v > mag[k + 1]) peaks[n++] = k
   }
-  return peaks
+  return out ? n : peaks
 }
 
 // Binary-search nearest peak index for bin k.
@@ -65,8 +68,11 @@ export function nearestPeak(peaks, k) {
 // `newMag`/`newFreq`/`peakMag` are caller-owned scratch sized `half+1`, zero-filled by the
 // caller before the call. `prevPhase` is the previous frame's unwrapped phase, or `null`
 // on the first frame.
+// `ratio`: a number, or a typed array holding it at [0], as hosts hand a live value (a Float64Array keeps every bit). This
+// function is too long for V8 to inline, so a number that is not whole, passed each frame, is one allocated each frame.
 export function scatterGated(mag, phase, prevPhase, ratio, ctx, newMag, newFreq, peakMag) {
   let { half, hop, freqPerBin } = ctx
+  ratio = ArrayBuffer.isView(ratio) ? ratio[0] : +ratio   // `+` types it a number: joined untyped, the element is boxed
   let maxM = 0
   for (let k = 0; k <= half; k++) if (mag[k] > maxM) maxM = mag[k]
   let floor = Math.max(1e-8, maxM * 0.005)
@@ -109,12 +115,15 @@ export const WIN_GAIN = Math.sqrt(1.5)
 // slightly incoherently — the classic vocoder scalloping loss, deterministic per bin.
 function lobeGain(dw, N) {
   if (!dw) return 1
-  let d = (t) => {
-    let s = Math.sin(t / 2)
-    return Math.abs(s) < 1e-12 ? N : Math.sin(N * t / 2) / s
-  }
   let b = PI2 / N
-  return Math.abs(0.5 * d(dw) + 0.25 * d(dw - b) + 0.25 * d(dw + b)) / (0.5 * N)
+  return Math.abs(0.5 * dirichlet(dw, N) + 0.25 * dirichlet(dw - b, N) + 0.25 * dirichlet(dw + b, N)) / (0.5 * N)
+}
+
+// sin(N·t/2) / sin(t/2), N at its limit t = 0: the transform of N ones at t rad/sample, its linear phase aside. A
+// function of its own, not a closure over N made in each lobeGain call, which was an allocation a call
+function dirichlet(t, N) {
+  let s = Math.sin(t / 2)
+  return Math.abs(s) < 1e-12 ? N : Math.sin(N * t / 2) / s
 }
 
 // Peak-locked rigid-ROI bin scatter (Laroche-Dolson): each `findPeaks` peak advances its own
@@ -129,16 +138,19 @@ function lobeGain(dw, N) {
 // peak's neighbours so moving peaks inherit coherent history. NaN marks untracked bins.
 // `newMag`/`newPhase`/`peakMag` are caller-owned scratch sized `half+1`, zero-filled
 // by the caller; `peakDest`/`peakSynPhase` are caller-owned scratch sized `peaks.length`.
-export function scatterLocked(mag, phase, prevPhase, reset, peaks, ratio, ctx, syn, newMag, newPhase, peakDest, peakSynPhase, peakMag) {
+// `count`: the peaks there are, the first ones of `peaks` (all of them when omitted), for peaks in findPeaks' `out`.
+// `ratio`: a number, or a typed array holding it at [0], as scatterGated's.
+export function scatterLocked(mag, phase, prevPhase, reset, peaks, ratio, ctx, syn, newMag, newPhase, peakDest, peakSynPhase, peakMag, count = peaks.length) {
   let { half, hop, freqPerBin } = ctx
+  ratio = ArrayBuffer.isView(ratio) ? ratio[0] : +ratio   // `+` types it a number: joined untyped, the element is boxed
   // Without a resolved partial there is no pitch to move. Preserve DC and
   // short boundary frames rather than dropping their energy; re-seed later peaks.
-  if (!peaks.length) {
+  if (!count) {
     for (let k = 0; k <= half; k++) { newMag[k] = mag[k]; newPhase[k] = phase[k]; syn[k] = NaN }
     return
   }
   if (_boost.length <= half) _boost = new Float64Array(half + 1)
-  for (let i = 0; i < peaks.length; i++) {
+  for (let i = 0; i < count; i++) {
     let k = peaks[i]
     let trueFreq
     if (reset) trueFreq = k * freqPerBin
@@ -165,7 +177,7 @@ export function scatterLocked(mag, phase, prevPhase, reset, peaks, ratio, ctx, s
   // destination, so the ISTFT frame stays a windowed one — only collision and
   // past-Nyquist bookkeeping need correction. Bins riding a peak whose destination
   // fell outside Nyquist are legitimately lost and excluded from the energy target.
-  let eIn = 0, eOut = 0, lb = 0, last = peaks.length - 1
+  let eIn = 0, eOut = 0, lb = 0, last = count - 1
   for (let k = 0; k <= half; k++) {
     // nearestPeak(peaks, k), its lower bound walked up with k instead of searched for every bin
     while (lb < last && peaks[lb] < k) lb++
